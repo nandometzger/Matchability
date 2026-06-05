@@ -102,6 +102,39 @@ class DeDoDeV2Matcher(Matcher):
         xy = denormalize_pixel_coordinates(keypoints[0], h_pad, w_pad)
         return xy.detach().cpu().numpy().astype(float)
 
+    def _left_descriptors(self, image_left: NDArray[np.uint8], keypoints_left: NDArray):
+        """Normalised descriptors for the fixed left keypoints, cached across calls.
+
+        The left side is identical for every distortion of a pair, so caching it
+        removes one of the three ViT forwards per match.
+        """
+        torch = self._torch
+        from kornia.geometry.conversions import normalize_pixel_coordinates
+
+        flat = np.asarray(image_left).reshape(-1)
+        key = (
+            id(image_left),
+            id(keypoints_left),
+            image_left.shape,
+            len(keypoints_left),
+            int(flat[0]),
+            int(flat[-1]),
+        )
+        cached = getattr(self, "_left_cache", None)
+        if cached is not None and cached[0] == key:
+            return cached[1]
+
+        tensor_left, hl, wl = self._prep(image_left)
+        kpt_left = torch.as_tensor(
+            np.asarray(keypoints_left, dtype=float), device=self.device, dtype=torch.float32
+        )
+        norm_left = normalize_pixel_coordinates(kpt_left, hl, wl).unsqueeze(0)  # (1, K, 2)
+        with torch.inference_mode():
+            desc_left = self._model.describe(tensor_left, keypoints=norm_left)[0]  # (K, D)
+            desc_left = torch.nn.functional.normalize(desc_left, dim=-1)
+        self._left_cache = (key, desc_left)
+        return desc_left
+
     def match(
         self,
         image_left: NDArray[np.uint8],
@@ -109,28 +142,18 @@ class DeDoDeV2Matcher(Matcher):
         image_right: NDArray[np.uint8],
     ) -> LeftToRightMatches:
         torch = self._torch
-        from kornia.geometry.conversions import (
-            denormalize_pixel_coordinates,
-            normalize_pixel_coordinates,
-        )
+        from kornia.geometry.conversions import denormalize_pixel_coordinates
 
         k = len(keypoints_left)
         if k == 0:
             return LeftToRightMatches(np.zeros((0, 2)), np.zeros(0), np.zeros(0, dtype=bool))
 
-        tensor_left, hl, wl = self._prep(image_left)
+        desc_left = self._left_descriptors(image_left, keypoints_left)  # cached, normalised (K, D)
         tensor_right, hr, wr = self._prep(image_right)
-        kpt_left = torch.as_tensor(
-            np.asarray(keypoints_left, dtype=float), device=self.device, dtype=torch.float32
-        )
-        norm_left = normalize_pixel_coordinates(kpt_left, hl, wl).unsqueeze(0)  # (1, K, 2)
 
         with torch.inference_mode():
-            desc_left = self._model.describe(tensor_left, keypoints=norm_left)[0]  # (K, D)
             kpt_right_norm, _ = self._model.detect(tensor_right, n=self.n_right)  # (1, M, 2)
             desc_right = self._model.describe(tensor_right, keypoints=kpt_right_norm)[0]  # (M, D)
-
-            desc_left = torch.nn.functional.normalize(desc_left, dim=-1)
             desc_right = torch.nn.functional.normalize(desc_right, dim=-1)
             logits = self.inv_temperature * (desc_left @ desc_right.T)  # (K, M)
             prob = logits.softmax(dim=1) * logits.softmax(dim=0)  # dual softmax
