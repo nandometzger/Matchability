@@ -13,8 +13,6 @@
 | gaussian_blur | rises | 0.0% → 99.7% | 1.00 → 0.79 | 100.0 → 25.0 |
 | gaussian_noise | rises | 0.0% → 94.6% | 1.00 → 0.07 | 100.0 → 11.6 |
 | horizontal_shift | flat | 0.0% → 27.5% | 1.00 → 0.66 | 100.0 → 16.8 |
-| identity | anchor_low | 0.0% → 0.0% | 1.00 → 1.00 | 100.0 → 100.0 |
 | jpeg | rises | 16.4% → 80.1% | 0.99 → 0.81 | 44.7 → 26.7 |
 | occlusion_patch | rises | 1.8% → 80.4% | 1.00 → 0.78 | 69.3 → 15.9 |
-| scramble | anchor_high | 96.2% → 96.2% | 0.50 → 0.50 | 12.0 → 12.0 |
 | vertical_shift | rises | 0.0% → 97.6% | 1.00 → 0.73 | 100.0 → 23.9 |

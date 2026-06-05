@@ -42,10 +42,14 @@ def main(argv: list[str] | None = None) -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
+    from matchability import distortions as D
     from matchability.report import aggregate, write_summary
     from matchability.viz import plot_distortion_grid, plot_metric_comparison_grid
 
     rows = load_csv(csv_path)
+    # Drop anchor distortions (identity / scramble) — single-point, PSNR=∞ degenerate cases.
+    sweep_names = set(D.sweep_distortions())
+    rows = [r for r in rows if r["distortion"] in sweep_names]
 
     # Parse numeric fields — CSV stores everything as strings.
     for row in rows:
@@ -69,15 +73,14 @@ def main(argv: list[str] | None = None) -> int:
     )
     print(f"wrote {grid_path}")
 
-    # 2) Three-metric comparison grids
-    for mode in ("sweep", "global"):
-        cmp_path = plot_metric_comparison_grid(
-            per,
-            out / f"comparison_{mode}.png",
-            normalize=mode,
-            title=f"E_match / 1−SSIM / 1−PSNR  ({mode} normalised, {n_pairs} pairs)",
-        )
-        print(f"wrote {cmp_path}")
+    # 2) Three-metric comparison grid (per-sweep normalised)
+    cmp_path = plot_metric_comparison_grid(
+        per,
+        out / "comparison.png",
+        normalize="sweep",
+        title=f"E_match / 1−SSIM / 1−PSNR  (per-sweep normalised, {n_pairs} pairs)",
+    )
+    print(f"wrote {cmp_path}")
 
     # 3) Markdown summary with PSNR column
     meta = (

@@ -67,6 +67,14 @@ def draw_matches(
     return canvas
 
 
+_BG_FLAT = "#f0f4ff"   # light blue tint  — insensitive / flat group
+_BG_RISES = "#fff4f0"  # light red tint   — sensitive / rises group
+
+
+def _group_bg(trend: str) -> str:
+    return _BG_FLAT if trend == "flat" else _BG_RISES
+
+
 def plot_distortion_grid(
     per_distortion: Mapping[str, Mapping[str, Sequence]],
     out_path: str | Path,
@@ -77,7 +85,8 @@ def plot_distortion_grid(
     """Grid of ``E_match`` (%) vs severity per distortion, with an SSIM overlay.
 
     ``per_distortion[name]`` is a mapping with keys ``severities``, ``error`` and
-    optionally ``ssim`` and ``trend``.
+    optionally ``ssim`` and ``trend``.  Subplots are shaded blue (flat/insensitive)
+    or red (rises/sensitive) to make the grouping immediately visible.
     """
     import matplotlib
 
@@ -92,6 +101,8 @@ def plot_distortion_grid(
 
     for ax, name in zip(flat, names, strict=False):
         data = per_distortion[name]
+        trend = data.get("trend", "")
+        ax.set_facecolor(_group_bg(trend))
         x = list(range(len(data["error"])))
         ax.plot(x, [100 * e for e in data["error"]], "o-", color="crimson", label="E_match (%)")
         ax.set_ylim(-2, 102)
@@ -99,7 +110,6 @@ def plot_distortion_grid(
         ax.set_xticks(x)
         ax.set_xticklabels([str(s) for s in data["severities"]], rotation=45, fontsize=7)
         ax.grid(alpha=0.3)
-        trend = data.get("trend", "")
         ax.set_title(f"{name}  [{trend}]", fontsize=10)
         if data.get("ssim") is not None:
             ax2 = ax.twinx()
@@ -168,6 +178,8 @@ def plot_metric_comparison_grid(
 
     for ax, name in zip(flat, names, strict=False):
         d = per_distortion[name]
+        trend = d.get("trend", "")
+        ax.set_facecolor(_group_bg(trend))
         x = list(range(len(d["error"])))
         if ranges is not None:
             re, rs, rp = ranges["error"], ranges["ssim"], ranges["psnr"]
@@ -183,7 +195,7 @@ def plot_metric_comparison_grid(
         ax.set_xticks(x)
         ax.set_xticklabels([str(s) for s in d["severities"]], rotation=45, fontsize=7)
         ax.grid(alpha=0.3)
-        ax.set_title(f"{name}  [{d.get('trend', '')}]", fontsize=10)
+        ax.set_title(f"{name}  [{trend}]", fontsize=10)
 
     for ax in list(flat)[len(names) :]:
         ax.axis("off")

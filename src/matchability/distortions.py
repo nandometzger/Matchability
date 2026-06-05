@@ -71,6 +71,17 @@ def available() -> list[str]:
     return sorted(REGISTRY)
 
 
+def sweep_distortions() -> list[str]:
+    """Names of distortions suitable for a sensitivity sweep, grouped flat-first then rises.
+
+    Excludes anchors (identity / scramble) which are degenerate single-point cases.
+    Within each group distortions are alphabetically sorted.
+    """
+    flat = sorted(n for n, d in REGISTRY.items() if d.trend == "flat")
+    rises = sorted(n for n, d in REGISTRY.items() if d.trend == "rises")
+    return flat + rises
+
+
 def get(name: str) -> Distortion:
     return REGISTRY[name]
 

@@ -26,9 +26,9 @@ from matchability.report import aggregate, write_summary
 from matchability.types import MatchabilityResult
 from matchability.viz import draw_matches, plot_distortion_grid, plot_metric_comparison_grid
 
-# One representative severity per distortion rendered as a Fig-10-style overlay.
+# One representative severity per sweep distortion rendered as a Fig-10-style overlay.
+# Anchors (identity / scramble) are excluded — they're single-point degenerate cases.
 VIZ_TARGETS = {
-    "identity": 0.0,
     "gaussian_blur": 8.0,
     "gaussian_noise": 40.0,
     "jpeg": 5.0,
@@ -40,7 +40,6 @@ VIZ_TARGETS = {
     "disparity_scale": 1.2,
     "elastic_warp": 8.0,
     "occlusion_patch": 0.5,
-    "scramble": 1.0,
 }
 
 
@@ -104,7 +103,7 @@ def main(argv: list[str] | None = None) -> int:
     if not pairs:
         print("no stereo pairs found (run extract_frames.py first)")
         return 1
-    names = args.distortions or D.available()
+    names = args.distortions or D.sweep_distortions()
     matcher = build_matcher(args.backend, args.device)
     viz_stem = args.viz_video or pairs[0][0]
 
@@ -165,13 +164,12 @@ def main(argv: list[str] | None = None) -> int:
     per = aggregate(rows)
     grid_title = f"Matchability sensitivity ({args.backend}, {len(pairs)} pairs)"
     plot_distortion_grid(per, out / "sensitivity_grid.png", title=grid_title)
-    for mode in ("sweep", "global"):
-        plot_metric_comparison_grid(
-            per,
-            out / f"comparison_{mode}.png",
-            normalize=mode,
-            title=f"E_match / 1−SSIM / 1−PSNR  ({mode} normalised, {len(pairs)} pairs)",
-        )
+    plot_metric_comparison_grid(
+        per,
+        out / "comparison.png",
+        normalize="sweep",
+        title=f"E_match / 1−SSIM / 1−PSNR  (per-sweep normalised, {len(pairs)} pairs)",
+    )
     meta = (
         f"- backend: `{args.backend}`  ·  pairs: {len(pairs)}"
         f"  ·  resolution: {args.working_resolution}px"

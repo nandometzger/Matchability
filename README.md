@@ -106,39 +106,40 @@ changes — is what makes `E_match` a better proxy for stereo comfort than pixel
 
 ### Results
 
-E_match / 1-SSIM / 1-PSNR all min-max scaled and degradation-aligned (all curves rise with severity):
+E_match / 1-SSIM / 1-PSNR all min-max scaled per distortion and degradation-aligned (all curves rise with severity):
 
-![Per-sweep normalised comparison](experiments/results/comparison_sweep.png)
+![Comparison](experiments/results/comparison.png)
 
-*Crimson = E_match, steel-blue = 1−SSIM, sea-green = 1−PSNR (all normalised per-distortion so
-curves can be compared regardless of absolute scale). Notice the geometric distortions
-(horizontal_shift, disparity_scale) where SSIM/PSNR degrade but E_match stays flat.*
+*Crimson = E_match, steel-blue = 1−SSIM, sea-green = 1−PSNR (normalised per-distortion so
+curves can be compared regardless of absolute scale). Geometric distortions
+(horizontal_shift, disparity_scale) show SSIM/PSNR degrading while E_match stays flat.*
 
-The same view globally normalised across all distortions (showing absolute sensitivity):
-
-![Globally normalised comparison](experiments/results/comparison_global.png)
-
-The classic distortion grid (E_match % + SSIM, no normalisation):
+The raw E_match % + SSIM grid:
 
 ![Matchability sensitivity across distortions](experiments/results/sensitivity_grid.png)
 
 ### Distortion catalogue
 
-| Distortion | Family | Expected trend | What it tests |
-| --- | --- | --- | --- |
-| `identity` | anchor | `anchor_low` (≈0%) | Baseline: identical views → near-zero error |
-| `scramble` | anchor | `anchor_high` (≈96%) | Worst case: random pixel shuffle → no matches |
-| `gaussian_blur` | texture | rises sharply | Over-smoothing destroys keypoint texture |
-| `gaussian_noise` | texture | rises | Salt-and-pepper pattern disrupts descriptors |
-| `jpeg` | texture | rises | Compression artefacts bleed into descriptors |
-| `downscale_upscale` | texture | rises | Bicubic downsample + upsample loses HF texture |
-| `contrast_fade` | texture | rises | Low-contrast regions become ambiguous to match |
-| `horizontal_shift` | geometric | flat | Pure horizontal disparity offset — DeDoDe invariant |
-| `disparity_scale` | geometric | flat | Horizontal stretch (wrong stereo strength) — geometry only |
-| `vertical_shift` | geometric | rises | Breaks epipolar (|Δy| > τ) — matches filtered out |
-| `elastic_warp` | geometric | rises | Smooth spatial warp that disrupts both descriptor and geometry |
-| `brightness_gamma` | photometric | flat | Global tone curve — DeDoDe descriptors are robust |
-| `occlusion_patch` | structural | rises ∝ area | Black patch simulates disocclusion; error ∝ occluded fraction |
+**Insensitive (flat) — E_match should stay low despite pixel-level degradation:**
+
+| Distortion | Family | What it tests |
+| --- | --- | --- |
+| `brightness_gamma` | photometric | Global tone curve — DeDoDe descriptors are robust to exposure changes |
+| `disparity_scale` | geometric | Horizontal stretch (wrong stereo strength) — only geometry, not texture |
+| `horizontal_shift` | geometric | Pure horizontal disparity offset — DeDoDe is translation-invariant |
+
+**Sensitive (rises) — E_match should rise with severity:**
+
+| Distortion | Family | What it tests |
+| --- | --- | --- |
+| `contrast_fade` | texture | Low-contrast regions become ambiguous to match |
+| `downscale_upscale` | texture | Bicubic downsample + upsample loses high-frequency texture |
+| `elastic_warp` | geometric | Smooth spatial warp disrupts both descriptor and epipolar geometry |
+| `gaussian_blur` | texture | Over-smoothing destroys keypoint texture |
+| `gaussian_noise` | texture | Salt-and-pepper pattern disrupts descriptors |
+| `jpeg` | texture | Compression artefacts bleed into descriptors |
+| `occlusion_patch` | structural | Black patch simulates disocclusion; error ∝ occluded fraction |
+| `vertical_shift` | geometric | Breaks epipolar consistency (|Δy| > τ) — matches filtered out |
 
 ### Match overlays (video 0001)
 
@@ -162,26 +163,26 @@ Full numbers (DeDoDe v2, 5 pairs, 768 px, τ=2px):
 
 | Distortion | Expected | `E_match` min → max | SSIM min → max | PSNR(dB) min → max |
 | --- | --- | --- | --- | --- |
-| identity | anchor_low | 0.0% → 0.0% | 1.00 → 1.00 | 100 → 100 |
-| scramble | anchor_high | 96.2% → 96.2% | 0.50 → 0.50 | 12.0 → 12.0 |
+| **insensitive (flat)** | | | | |
+| brightness_gamma | flat | 5.5% → 37.1% | 1.00 → 0.29 | 57.0 → 10.7 |
+| disparity_scale | flat | 0.0% → 43.5% | 1.00 → 0.70 | 100 → 18.6 |
+| horizontal_shift | flat | 0.0% → 27.5% | 1.00 → 0.66 | 100 → 16.8 |
+| **sensitive (rises)** | | | | |
+| contrast_fade | rises | 0.0% → 83.8% | 1.00 → 0.76 | 100 → 15.7 |
+| downscale_upscale | rises | 0.0% → 95.6% | 1.00 → 0.81 | 100 → 28.5 |
+| elastic_warp | rises | 0.0% → 90.8% | 1.00 → 0.71 | 100 → 21.1 |
 | gaussian_blur | rises | 0.0% → 99.7% | 1.00 → 0.79 | 100 → 25.0 |
 | gaussian_noise | rises | 0.0% → 94.6% | 1.00 → 0.07 | 100 → 11.6 |
 | jpeg | rises | 16.4% → 80.1% | 0.99 → 0.81 | 44.7 → 26.7 |
-| downscale_upscale | rises | 0.0% → 95.6% | 1.00 → 0.81 | 100 → 28.5 |
-| contrast_fade | rises | 0.0% → 83.8% | 1.00 → 0.76 | 100 → 15.7 |
-| horizontal_shift | flat | 0.0% → 27.5% | 1.00 → 0.66 | 100 → 16.8 |
-| disparity_scale | flat | 0.0% → 43.5% | 1.00 → 0.70 | 100 → 18.6 |
-| vertical_shift | rises | 0.0% → 97.6% | 1.00 → 0.73 | 100 → 23.9 |
-| elastic_warp | rises | 0.0% → 90.8% | 1.00 → 0.71 | 100 → 21.1 |
-| brightness_gamma | flat | 5.5% → 37.1% | 1.00 → 0.29 | 57.0 → 10.7 |
 | occlusion_patch | rises | 1.8% → 80.4% | 1.00 → 0.78 | 69.3 → 15.9 |
+| vertical_shift | rises | 0.0% → 97.6% | 1.00 → 0.73 | 100 → 23.9 |
 
 To reproduce the study from scratch:
 
 ```bash
 python scripts/extract_frames.py --input-dir data/raw --output-dir data/frames
 python scripts/run_sensitivity.py --backend dedode --working-resolution 768
-# -> experiments/results/{sensitivity_grid.png, comparison_{sweep,global}.png,
+# -> experiments/results/{sensitivity_grid.png, comparison.png,
 #                          sensitivity.csv, summary.md, matches_*.png}
 ```
 
@@ -189,7 +190,7 @@ To regenerate only plots from an existing CSV (no DeDoDe sweep):
 
 ```bash
 python scripts/plot_results.py
-# -> sensitivity_grid.png, comparison_{sweep,global}.png, summary.md (reads sensitivity.csv)
+# -> sensitivity_grid.png, comparison.png, summary.md  (reads sensitivity.csv)
 ```
 
 ## Development
