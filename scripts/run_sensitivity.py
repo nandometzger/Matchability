@@ -100,7 +100,14 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--distortions", nargs="*", default=None, help="subset (default: all)")
     p.add_argument("--frame-index", type=int, default=0)
     p.add_argument("--viz-video", default=None)
+    p.add_argument(
+        "--severities",
+        choices=["fine", "coarse"],
+        default="fine",
+        help="severity sweep density (default: fine)",
+    )
     args = p.parse_args(argv)
+    fine = args.severities == "fine"
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -123,7 +130,7 @@ def main(argv: list[str] | None = None) -> int:
         m_gt = _membership_mask(keypoints, matches_gt, args.tau, args.conf_threshold, None)
         for name in names:
             dist = D.get(name)
-            for severity in dist.severities:
+            for severity in dist.sweep(fine=fine):
                 right_pred = D.apply(name, right_gt, severity)
                 matches_pred = matcher.match(left, keypoints, right_pred)
                 m_pred = _membership_mask(
@@ -174,7 +181,7 @@ def main(argv: list[str] | None = None) -> int:
 
     per = {}
     for name in names:
-        sevs = list(D.get(name).severities)
+        sevs = list(D.get(name).sweep(fine=fine))
         per[name] = {
             "severities": sevs,
             "error": [float(np.mean(agg[name][s]["err"])) for s in sevs],

@@ -70,3 +70,23 @@ def test_brightness_gamma_more_robust_than_blur(matcher, stereo_pair):
 
 def test_scramble_destroys_correspondence(matcher, stereo_pair):
     assert _err(matcher, stereo_pair, "scramble", 1.0) > 0.6
+
+
+def test_vertical_shift_transition_across_epipolar_threshold(matcher, stereo_pair):
+    # Within tau the matches stay on their epipolar line; beyond it they are filtered out.
+    sweep = D.get("vertical_shift").sweep(fine=True)
+    below = [_err(matcher, stereo_pair, "vertical_shift", s, tau=2.0) for s in sweep if s <= 2.0]
+    above = [_err(matcher, stereo_pair, "vertical_shift", s, tau=2.0) for s in sweep if s >= 3.0]
+    assert max(below) < 0.5
+    assert min(above) > 0.7
+    assert min(above) > max(below)
+
+
+def test_blur_fine_sweep_is_monotonic_and_rises(matcher, stereo_pair):
+    errors = [
+        _err(matcher, stereo_pair, "gaussian_blur", s)
+        for s in D.get("gaussian_blur").sweep(fine=True)
+    ]
+    assert errors[-1] > errors[0] + 0.7  # clear rise end-to-end
+    # non-decreasing (pairwise over consecutive severities; lengths differ by 1 by design)
+    assert all(b >= a - 0.02 for a, b in zip(errors, errors[1:], strict=False))

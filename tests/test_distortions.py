@@ -75,3 +75,30 @@ def test_occlusion_patch_covers_requested_area():
     out = D.apply("occlusion_patch", img, 0.25)
     covered = np.all(out == 128, axis=2).mean()
     assert covered == pytest.approx(0.25, abs=0.05)
+
+
+def test_sweep_defaults_to_coarse_severities():
+    d = D.get("gaussian_blur")
+    assert d.sweep() == d.severities
+    assert d.sweep(fine=False) == d.severities
+
+
+def test_fine_sweep_is_at_least_as_dense_as_coarse():
+    for name in D.available():
+        d = D.get(name)
+        assert len(d.sweep(fine=True)) >= len(d.sweep(fine=False))
+
+
+def test_fine_sweep_is_strictly_denser_for_continuous_distortions():
+    for name in ["gaussian_blur", "horizontal_shift", "vertical_shift", "jpeg", "occlusion_patch"]:
+        d = D.get(name)
+        assert len(d.sweep(fine=True)) > len(d.severities)
+
+
+@pytest.mark.parametrize("name", D.available())
+def test_fine_sweep_endpoints_are_valid_images(name):
+    img = _img()
+    sweep = D.get(name).sweep(fine=True)
+    for severity in (sweep[0], sweep[-1]):
+        out = D.apply(name, img, severity)
+        assert out.shape == img.shape and out.dtype == np.uint8

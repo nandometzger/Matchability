@@ -28,17 +28,28 @@ _SEED = 0
 
 @dataclass(frozen=True)
 class Distortion:
-    """A named, severity-parameterised distortion with its expected metric trend."""
+    """A named, severity-parameterised distortion with its expected metric trend.
+
+    ``severities`` is the coarse default sweep; ``fine_severities`` is a denser
+    sweep used by the empirical study for smooth curves. Use :meth:`sweep`.
+    """
 
     name: str
     fn: Callable[[Image, float], Image]
     severities: tuple[float, ...]
     trend: str
     family: str
+    fine_severities: tuple[float, ...] = ()
 
     def __call__(self, image: Image, severity: float) -> Image:
         out = self.fn(image, severity)
         return np.ascontiguousarray(out, dtype=np.uint8)
+
+    def sweep(self, fine: bool = False) -> tuple[float, ...]:
+        """Severity sweep -- the dense one if ``fine`` and available, else the coarse one."""
+        if fine and self.fine_severities:
+            return self.fine_severities
+        return self.severities
 
 
 REGISTRY: dict[str, Distortion] = {}
@@ -50,8 +61,9 @@ def register(
     severities: tuple[float, ...],
     trend: str,
     family: str,
+    fine_severities: tuple[float, ...] = (),
 ) -> None:
-    REGISTRY[name] = Distortion(name, fn, severities, trend, family)
+    REGISTRY[name] = Distortion(name, fn, severities, trend, family, fine_severities)
 
 
 def available() -> list[str]:
@@ -185,18 +197,94 @@ def _scramble(image: Image, frac: float) -> Image:
     return out
 
 
-register("identity", _identity, (0.0,), "anchor_low", "anchor")
-register("gaussian_blur", _gaussian_blur, (0.5, 1.0, 2.0, 4.0, 8.0), "rises", "texture")
+register("identity", _identity, (0.0,), "anchor_low", "anchor", fine_severities=(0.0,))
 register(
-    "horizontal_shift", _horizontal_shift, (1.0, 2.0, 4.0, 8.0, 16.0, 32.0), "flat", "geometric"
+    "gaussian_blur",
+    _gaussian_blur,
+    (0.5, 1.0, 2.0, 4.0, 8.0),
+    "rises",
+    "texture",
+    fine_severities=(0.0, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0),
 )
-register("vertical_shift", _vertical_shift, (1.0, 2.0, 3.0, 4.0, 6.0, 8.0), "rises", "geometric")
-register("gaussian_noise", _gaussian_noise, (5.0, 10.0, 20.0, 40.0, 80.0), "rises", "texture")
-register("jpeg", _jpeg, (90.0, 70.0, 50.0, 30.0, 15.0, 5.0), "rises", "texture")
-register("downscale_upscale", _downscale_upscale, (0.75, 0.5, 0.35, 0.25, 0.15), "rises", "texture")
-register("contrast_fade", _contrast_fade, (0.8, 0.6, 0.4, 0.2, 0.1), "rises", "texture")
-register("brightness_gamma", _brightness_gamma, (1.25, 1.5, 2.0, 2.5), "flat", "photometric")
-register("disparity_scale", _disparity_scale, (1.02, 1.05, 1.1, 1.2), "flat", "geometric")
-register("elastic_warp", _elastic_warp, (1.0, 2.0, 4.0, 8.0, 12.0), "rises", "geometric")
-register("occlusion_patch", _occlusion_patch, (0.05, 0.1, 0.2, 0.35, 0.5), "rises", "structural")
-register("scramble", _scramble, (1.0,), "anchor_high", "anchor")
+register(
+    "horizontal_shift",
+    _horizontal_shift,
+    (1.0, 2.0, 4.0, 8.0, 16.0, 32.0),
+    "flat",
+    "geometric",
+    fine_severities=(0.0, 1.0, 2.0, 4.0, 6.0, 8.0, 12.0, 16.0, 24.0, 32.0, 48.0, 64.0),
+)
+register(
+    "vertical_shift",
+    _vertical_shift,
+    (1.0, 2.0, 3.0, 4.0, 6.0, 8.0),
+    "rises",
+    "geometric",
+    # densely sampled across the epipolar threshold (tau) to show the transition
+    fine_severities=(0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0),
+)
+register(
+    "gaussian_noise",
+    _gaussian_noise,
+    (5.0, 10.0, 20.0, 40.0, 80.0),
+    "rises",
+    "texture",
+    fine_severities=(0.0, 2.0, 5.0, 8.0, 12.0, 16.0, 24.0, 32.0, 48.0, 64.0, 80.0),
+)
+register(
+    "jpeg",
+    _jpeg,
+    (90.0, 70.0, 50.0, 30.0, 15.0, 5.0),
+    "rises",
+    "texture",
+    fine_severities=(95.0, 90.0, 80.0, 70.0, 60.0, 50.0, 40.0, 30.0, 20.0, 15.0, 10.0, 5.0),
+)
+register(
+    "downscale_upscale",
+    _downscale_upscale,
+    (0.75, 0.5, 0.35, 0.25, 0.15),
+    "rises",
+    "texture",
+    fine_severities=(1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.25, 0.2, 0.15, 0.1),
+)
+register(
+    "contrast_fade",
+    _contrast_fade,
+    (0.8, 0.6, 0.4, 0.2, 0.1),
+    "rises",
+    "texture",
+    fine_severities=(1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1),
+)
+register(
+    "brightness_gamma",
+    _brightness_gamma,
+    (1.25, 1.5, 2.0, 2.5),
+    "flat",
+    "photometric",
+    fine_severities=(1.0, 1.1, 1.25, 1.4, 1.6, 1.8, 2.0, 2.25, 2.5, 3.0),
+)
+register(
+    "disparity_scale",
+    _disparity_scale,
+    (1.02, 1.05, 1.1, 1.2),
+    "flat",
+    "geometric",
+    fine_severities=(1.0, 1.01, 1.02, 1.03, 1.05, 1.08, 1.1, 1.15, 1.2, 1.3),
+)
+register(
+    "elastic_warp",
+    _elastic_warp,
+    (1.0, 2.0, 4.0, 8.0, 12.0),
+    "rises",
+    "geometric",
+    fine_severities=(0.0, 0.5, 1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 10.0, 12.0, 16.0),
+)
+register(
+    "occlusion_patch",
+    _occlusion_patch,
+    (0.05, 0.1, 0.2, 0.35, 0.5),
+    "rises",
+    "structural",
+    fine_severities=(0.0, 0.02, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6),
+)
+register("scramble", _scramble, (1.0,), "anchor_high", "anchor", fine_severities=(1.0,))
