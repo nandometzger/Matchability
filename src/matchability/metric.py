@@ -63,4 +63,10 @@ def compute_matchability(
 
     m_gt = _membership_mask(keypoints_left, matches_gt, tau, conf_threshold, disparity_bounds)
     m_pred = _membership_mask(keypoints_left, matches_pred, tau, conf_threshold, disparity_bounds)
-    return MatchabilityResult.from_masks(m_gt, m_pred)
+    return MatchabilityResult.from_masks(
+        m_gt,
+        m_pred,
+        keypoints_left=keypoints_left,
+        right_xy_gt=matches_gt.right_xy,
+        right_xy_pred=matches_pred.right_xy,
+    )

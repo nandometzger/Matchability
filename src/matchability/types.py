@@ -42,7 +42,7 @@ class LeftToRightMatches:
         return len(self.valid)
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, eq=False)
 class MatchabilityResult:
     """Outcome of a Matchability Error computation.
 
@@ -56,16 +56,29 @@ class MatchabilityResult:
         fp: ``|~M_gt & M_pred|`` -- hallucination (matchable in pred, not GT).
         fn: ``|M_gt & ~M_pred|`` -- omission (matchable in GT, not pred).
         n_reference: number of reference keypoints in the left image.
+        keypoints_left, mask_gt, mask_pred, right_xy_gt, right_xy_pred: optional
+            per-keypoint detail (populated by the pipeline) used for visualisation.
     """
 
     tp: int
     fp: int
     fn: int
     n_reference: int
+    keypoints_left: NDArray[np.floating] | None = None
+    mask_gt: NDArray[np.bool_] | None = None
+    mask_pred: NDArray[np.bool_] | None = None
+    right_xy_gt: NDArray[np.floating] | None = None
+    right_xy_pred: NDArray[np.floating] | None = None
 
     @classmethod
     def from_masks(
-        cls, m_gt: NDArray[np.bool_], m_pred: NDArray[np.bool_]
+        cls,
+        m_gt: NDArray[np.bool_],
+        m_pred: NDArray[np.bool_],
+        *,
+        keypoints_left: NDArray[np.floating] | None = None,
+        right_xy_gt: NDArray[np.floating] | None = None,
+        right_xy_pred: NDArray[np.floating] | None = None,
     ) -> MatchabilityResult:
         """Build a result from two boolean masks over the same reference keypoints."""
         m_gt = np.asarray(m_gt, dtype=bool)
@@ -77,7 +90,17 @@ class MatchabilityResult:
         tp = int(np.count_nonzero(m_gt & m_pred))
         fp = int(np.count_nonzero(~m_gt & m_pred))
         fn = int(np.count_nonzero(m_gt & ~m_pred))
-        return cls(tp=tp, fp=fp, fn=fn, n_reference=int(m_gt.size))
+        return cls(
+            tp=tp,
+            fp=fp,
+            fn=fn,
+            n_reference=int(m_gt.size),
+            keypoints_left=keypoints_left,
+            mask_gt=m_gt,
+            mask_pred=m_pred,
+            right_xy_gt=right_xy_gt,
+            right_xy_pred=right_xy_pred,
+        )
 
     @property
     def union(self) -> int:
