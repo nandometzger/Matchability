@@ -59,7 +59,11 @@ testpaths = ["tests"]
 markers = [
     "dedode: tests that load the real DeDoDe v2 model (downloads weights, slow; opt-in with -m dedode)",
 ]
-filterwarnings = ["ignore::DeprecationWarning"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    # kornia emits this on non-CUDA devices (we run on MPS/CPU); harmless.
+    "ignore:CUDA is not available or torch_xla is imported. Disabling autocast.:UserWarning",
+]
 
 [tool.ruff]
 line-length = 100

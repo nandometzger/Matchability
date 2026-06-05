@@ -16,4 +16,16 @@ try:
 except PackageNotFoundError:  # pragma: no cover - source checkout without install
     __version__ = "0.0.0"
 
-__all__ = ["__version__"]
+from matchability.api import Matchability, matchability_error
+from matchability.metric import compute_matchability
+from matchability.types import LeftToRightMatches, MatchabilityResult
+
+__all__ = [
+    "__version__",
+    "matchability_error",
+    "Matchability",
+    "MatchabilityResult",
+    "LeftToRightMatches",
+    "compute_matchability",
+]
+
