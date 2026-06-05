@@ -16,23 +16,31 @@ import csv
 from pathlib import Path
 
 import cv2
-import numpy as np
 
 from matchability import distortions as D
 from matchability.imageio_util import load_image
 from matchability.matchers.base import Matcher
 from matchability.metric import _membership_mask
 from matchability.quality import psnr, ssim
+from matchability.report import aggregate, write_summary
 from matchability.types import MatchabilityResult
-from matchability.viz import draw_matches, plot_distortion_grid
+from matchability.viz import draw_matches, plot_distortion_grid, plot_metric_comparison_grid
 
-# Representative (distortion, severity) cases rendered as match overlays.
+# One representative severity per distortion rendered as a Fig-10-style overlay.
 VIZ_TARGETS = {
     "identity": 0.0,
     "gaussian_blur": 8.0,
+    "gaussian_noise": 40.0,
+    "jpeg": 5.0,
+    "downscale_upscale": 0.25,
+    "contrast_fade": 0.2,
+    "brightness_gamma": 2.0,
     "horizontal_shift": 32.0,
     "vertical_shift": 6.0,
+    "disparity_scale": 1.2,
+    "elastic_warp": 8.0,
     "occlusion_patch": 0.5,
+    "scramble": 1.0,
 }
 
 
@@ -63,27 +71,6 @@ def load_pairs(frames_dir: Path, videos_dir: Path, resolution: int, frame_index:
         pairs.append((video.stem, load_image(left, resolution), load_image(right, resolution)))
     return pairs
 
-
-def write_summary(path: Path, per: dict, n_pairs: int, args) -> None:
-    lines = [
-        "# Matchability sensitivity study",
-        "",
-        f"- backend: `{args.backend}`  ·  pairs: {n_pairs}"
-        f"  ·  resolution: {args.working_resolution}px  ·  keypoints: {args.n_keypoints}"
-        f"  ·  tau: {args.tau}px",
-        "- `E_match` averaged over all pairs, reported as a percentage.",
-        "",
-        "| distortion | expected | E_match @ min sev | E_match @ max sev | SSIM min→max |",
-        "| --- | --- | --- | --- | --- |",
-    ]
-    for name, d in per.items():
-        e = [100 * x for x in d["error"]]
-        s = d["ssim"]
-        lines.append(
-            f"| {name} | {d['trend']} | {e[0]:.1f}% (sev {d['severities'][0]}) | "
-            f"{e[-1]:.1f}% (sev {d['severities'][-1]}) | {s[0]:.2f}→{s[-1]:.2f} |"
-        )
-    path.write_text("\n".join(lines) + "\n")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -122,7 +109,6 @@ def main(argv: list[str] | None = None) -> int:
     viz_stem = args.viz_video or pairs[0][0]
 
     rows: list[dict] = []
-    agg: dict[str, dict[float, dict[str, list]]] = {}
 
     for stem, left, right_gt in pairs:
         keypoints = matcher.detect(left, n=args.n_keypoints)
@@ -159,9 +145,6 @@ def main(argv: list[str] | None = None) -> int:
                         "psnr": psnr(right_gt, right_pred),
                     }
                 )
-                agg.setdefault(name, {}).setdefault(severity, {"err": [], "ssim": []})
-                agg[name][severity]["err"].append(res.error)
-                agg[name][severity]["ssim"].append(quality_ssim)
                 if stem == viz_stem and VIZ_TARGETS.get(name) == severity:
                     title = (
                         f"{name}={severity}  E_match={res.error_pct:.1f}%  "
@@ -179,19 +162,24 @@ def main(argv: list[str] | None = None) -> int:
         writer.writeheader()
         writer.writerows(rows)
 
-    per = {}
-    for name in names:
-        sevs = list(D.get(name).sweep(fine=fine))
-        per[name] = {
-            "severities": sevs,
-            "error": [float(np.mean(agg[name][s]["err"])) for s in sevs],
-            "ssim": [float(np.mean(agg[name][s]["ssim"])) for s in sevs],
-            "trend": D.get(name).trend,
-        }
+    per = aggregate(rows)
     grid_title = f"Matchability sensitivity ({args.backend}, {len(pairs)} pairs)"
     plot_distortion_grid(per, out / "sensitivity_grid.png", title=grid_title)
-    write_summary(out / "summary.md", per, len(pairs), args)
-    print(f"wrote results to {out}/ (csv, grid png, summary.md, match overlays)")
+    for mode in ("sweep", "global"):
+        plot_metric_comparison_grid(
+            per,
+            out / f"comparison_{mode}.png",
+            normalize=mode,
+            title=f"E_match / 1−SSIM / 1−PSNR  ({mode} normalised, {len(pairs)} pairs)",
+        )
+    meta = (
+        f"- backend: `{args.backend}`  ·  pairs: {len(pairs)}"
+        f"  ·  resolution: {args.working_resolution}px"
+        f"  ·  keypoints: {args.n_keypoints}  ·  tau: {args.tau}px\n"
+        "- `R_pred = distort(R_gt)` for each severity."
+    )
+    write_summary(per, out / "summary.md", meta)
+    print(f"wrote results to {out}/ (csv, grids, summary.md, overlays)")
     return 0
 
 

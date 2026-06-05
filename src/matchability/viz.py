@@ -116,3 +116,83 @@ def plot_distortion_grid(
     fig.savefig(out_path, dpi=110)
     plt.close(fig)
     return out_path
+
+
+def _minmax(values: Sequence[float], lo: float, hi: float) -> list[float]:
+    rng = hi - lo
+    if rng <= 1e-12:
+        return [0.0 for _ in values]
+    return [(v - lo) / rng for v in values]
+
+
+def _degradation(
+    values: Sequence[float], lo: float, hi: float, higher_is_worse: bool
+) -> list[float]:
+    """Min-max scale to [0, 1] and orient so larger == more degradation."""
+    norm = _minmax(values, lo, hi)
+    return norm if higher_is_worse else [1.0 - x for x in norm]
+
+
+def plot_metric_comparison_grid(
+    per_distortion: Mapping[str, Mapping[str, Sequence]],
+    out_path: str | Path,
+    *,
+    normalize: str = "sweep",
+    title: str | None = None,
+    ncols: int = 4,
+) -> Path:
+    """Overlay E_match, SSIM and PSNR per distortion, min-max scaled and degradation-aligned.
+
+    Every metric is normalised to ``[0, 1]`` and oriented so larger means more
+    degradation (E_match as-is; SSIM/PSNR flipped to ``1 - norm``), so the three
+    curves are directly comparable. ``normalize`` is ``"sweep"`` (each metric over
+    its own per-distortion range) or ``"global"`` (over its range across the study).
+    """
+    import matplotlib
+
+    matplotlib.use("Agg", force=True)
+    import matplotlib.pyplot as plt
+
+    names = list(per_distortion)
+    ranges = None
+    if normalize == "global":
+        ranges = {}
+        for key in ("error", "ssim", "psnr"):
+            allv = [v for d in per_distortion.values() for v in d[key]]
+            ranges[key] = (min(allv), max(allv))
+
+    ncols = max(1, min(ncols, len(names)))
+    nrows = (len(names) + ncols - 1) // ncols
+    fig, axes = plt.subplots(nrows, ncols, figsize=(4 * ncols, 3 * nrows), squeeze=False)
+    flat = axes.flat
+
+    for ax, name in zip(flat, names, strict=False):
+        d = per_distortion[name]
+        x = list(range(len(d["error"])))
+        if ranges is not None:
+            re, rs, rp = ranges["error"], ranges["ssim"], ranges["psnr"]
+        else:
+            re = (min(d["error"]), max(d["error"]))
+            rs = (min(d["ssim"]), max(d["ssim"]))
+            rp = (min(d["psnr"]), max(d["psnr"]))
+        ax.plot(x, _degradation(d["error"], *re, True), "o-", color="crimson", label="E_match")
+        ax.plot(x, _degradation(d["ssim"], *rs, False), "s--", color="steelblue", label="1−SSIM")
+        ax.plot(x, _degradation(d["psnr"], *rp, False), "^:", color="seagreen", label="1−PSNR")
+        ax.set_ylim(-0.05, 1.05)
+        ax.set_ylabel("degradation (norm.)")
+        ax.set_xticks(x)
+        ax.set_xticklabels([str(s) for s in d["severities"]], rotation=45, fontsize=7)
+        ax.grid(alpha=0.3)
+        ax.set_title(f"{name}  [{d.get('trend', '')}]", fontsize=10)
+
+    for ax in list(flat)[len(names) :]:
+        ax.axis("off")
+    handles, labels = axes[0, 0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="upper right", ncol=3)
+    if title:
+        fig.suptitle(title, fontsize=13)
+    fig.tight_layout()
+    out_path = Path(out_path)
+    fig.savefig(out_path, dpi=110)
+    plt.close(fig)
+    return out_path
