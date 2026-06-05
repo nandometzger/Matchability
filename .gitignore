@@ -1,0 +1,40 @@
+# Raw data & extracted frames (large; not tracked)
+data/
+*.mov
+*.mp4
+*.mkv
+
+# Model weights / caches
+*.pt
+*.pth
+*.ckpt
+.torch/
+.cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+.venv/
+venv/
+env/
+
+# Tooling
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+.DS_Store
+
+# Editor
+.idea/
+.vscode/
+
+# Experiment scratch (we DO commit experiments/results/*.png and *.csv explicitly)
+experiments/**/*.tmp
+scratch/
