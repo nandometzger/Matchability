@@ -153,6 +153,7 @@ Commits follow [Conventional Commits](https://www.conventionalcommits.org/) and 
 @inproceedings{metzger2026elastic3d,
   title     = {Elastic3D: Controllable Stereo Video Conversion with Guided Latent Decoding},
   author    = {Metzger, Nando and Truong, Prune and Bhat, Goutam and Schindler, Konrad and Tombari, Federico},
+  booktitle = {Proceedings of the IEEE/CVF Conference on Computer Vision and Pattern Recognition (CVPR)},
   year      = {2026},
 }
 ```
