@@ -14,7 +14,7 @@ from importlib.metadata import PackageNotFoundError, version
 try:
     __version__ = version("matchability")
 except PackageNotFoundError:  # pragma: no cover - source checkout without install
-    __version__ = "0.0.0"
+    __version__ = "0.1.0"
 
 from matchability.api import Matchability, matchability_error
 from matchability.metric import compute_matchability
