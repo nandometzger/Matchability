@@ -1,0 +1,81 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "matchability"
+version = "0.1.0"
+description = "Matchability Error: a DeDoDe-v2 stereoscopic-fidelity / binocular-rivalry metric from Elastic3D, reimplemented with tests and CI."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Nando Metzger", email = "nandometzger1996@gmail.com" }]
+keywords = [
+    "stereo",
+    "metric",
+    "binocular-rivalry",
+    "stereoscopic-fidelity",
+    "dedode",
+    "computer-vision",
+    "elastic3d",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "numpy>=1.24",
+    "opencv-python-headless>=4.8",
+    "pillow>=10.0",
+    "torch>=2.1",
+    "kornia>=0.8.0",
+]
+
+[project.optional-dependencies]
+viz = ["matplotlib>=3.7"]
+vae = ["diffusers>=0.21", "accelerate>=0.20"]
+dev = ["pytest>=8", "ruff>=0.6", "matplotlib>=3.7"]
+
+[project.scripts]
+matchability = "matchability.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/nandometzger/Matchability"
+Repository = "https://github.com/nandometzger/Matchability"
+Issues = "https://github.com/nandometzger/Matchability/issues"
+
+[tool.setuptools.packages.find]
+where = ["src", "."]
+include = ["matchability*", "experiments*"]
+
+[tool.setuptools.package-data]
+matchability = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "experiments/tests"]
+pythonpath = ["src", "."]
+markers = [
+    "dedode: tests that load the real DeDoDe v2 model (downloads weights, slow; opt-in with -m dedode)",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    # kornia emits this on non-CUDA devices (we run on MPS/CPU); harmless.
+    "ignore:CUDA is not available or torch_xla is imported. Disabling autocast.:UserWarning",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests", "experiments"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "W"]
+ignore = ["B008"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["matchability", "experiments"]

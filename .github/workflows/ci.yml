@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    # Weekly run that also exercises the real DeDoDe v2 backend.
+    - cron: "0 6 * * 1"
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  core:
+    name: lint + unit (py${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      # CPU-only torch keeps the install small; the fast tests use the
+      # mock/classical backends and never touch torch, but it is a core dep.
+      - name: Install CPU torch
+        run: pip install "torch>=2.1" --index-url https://download.pytorch.org/whl/cpu
+      - name: Install package (dev)
+        run: pip install -e ".[dev]"
+      - name: Ruff
+        run: ruff check .
+      - name: Unit + property tests (no model weights)
+        run: pytest -m "not dedode" -q
+
+  dedode:
+    name: real DeDoDe v2 (opt-in)
+    # Never blocks PRs: only on manual dispatch or the weekly schedule.
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install CPU torch
+        run: pip install "torch>=2.1" --index-url https://download.pytorch.org/whl/cpu
+      - name: Install package (dev)
+        run: pip install -e ".[dev]"
+      - name: Cache DeDoDe weights
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/torch/hub/checkpoints
+          key: dedode-weights-v2
+      - name: DeDoDe integration tests
+        run: pytest -m dedode -q
