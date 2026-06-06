@@ -23,7 +23,6 @@ def test_registry_has_expected_distortions():
         "jpeg",
         "downscale_upscale",
         "contrast_fade",
-        "brightness_gamma",
         "disparity_scale",
         "elastic_warp",
         "occlusion_patch",

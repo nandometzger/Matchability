@@ -34,7 +34,6 @@ VIZ_TARGETS = {
     "jpeg": 5.0,
     "downscale_upscale": 0.25,
     "contrast_fade": 0.2,
-    "brightness_gamma": 2.0,
     "horizontal_shift": 32.0,
     "vertical_shift": 6.0,
     "disparity_scale": 1.2,

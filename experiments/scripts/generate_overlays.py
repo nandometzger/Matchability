@@ -23,7 +23,6 @@ from matchability.viz import draw_matches
 # One representative severity per distortion: severe enough to show a clear mix of
 # TP / FP / FN, but not so extreme that everything is lost.
 VIZ_TARGETS: dict[str, float] = {
-    "brightness_gamma": 2.0,
     "contrast_fade": 0.2,
     "disparity_scale": 1.2,
     "downscale_upscale": 0.25,

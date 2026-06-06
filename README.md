@@ -114,7 +114,6 @@ without stereo-fidelity loss). Remaining rows: sensitive distortions — E_match
 
 | Distortion | Family | What it tests |
 | --- | --- | --- |
-| `brightness_gamma` | photometric | Global tone curve — DeDoDe descriptors are robust to exposure changes |
 | `disparity_scale` | geometric | Horizontal stretch (wrong stereo strength) — only geometry, not texture |
 | `horizontal_shift` | geometric | Pure horizontal disparity offset — DeDoDe is translation-invariant |
 
@@ -138,9 +137,9 @@ Matches are drawn as coloured lines on a left ∥ right composite:
 
 **Insensitive — mostly 🟢, E_match stays low:**
 
-| Brightness gamma (γ=2.0, 17.6%) | Disparity scale (×1.2, 22.4%) | Horizontal shift (32px, 6.7%) |
-| :---: | :---: | :---: |
-| ![brightness](experiments/results/matches_0001_brightness_gamma.png) | ![disp](experiments/results/matches_0001_disparity_scale.png) | ![hshift](experiments/results/matches_0001_horizontal_shift.png) |
+| Disparity scale (×1.2, 22.4%) | Horizontal shift (32px, 6.7%) |
+| :---: | :---: |
+| ![disp](experiments/results/matches_0001_disparity_scale.png) | ![hshift](experiments/results/matches_0001_horizontal_shift.png) |
 
 **Sensitive — increasing 🔴🟠 with severity:**
 
@@ -161,7 +160,6 @@ Full numbers (DeDoDe v2, 5 pairs, 768 px, τ=2px):
 | Distortion | Expected | `E_match` min → max | SSIM min → max | PSNR(dB) min → max |
 | --- | --- | --- | --- | --- |
 | **insensitive (flat)** | | | | |
-| brightness_gamma | flat | 5.5% → 37.1% | 1.00 → 0.29 | 57.0 → 10.7 |
 | disparity_scale | flat | 0.0% → 43.5% | 1.00 → 0.70 | 100 → 18.6 |
 | horizontal_shift | flat | 0.0% → 27.5% | 1.00 → 0.66 | 100 → 16.8 |
 | **sensitive (rises)** | | | | |

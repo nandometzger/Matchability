@@ -62,12 +62,6 @@ def test_occlusion_rises_with_area(matcher, stereo_pair):
     assert large > 0.3
 
 
-def test_brightness_gamma_more_robust_than_blur(matcher, stereo_pair):
-    gamma = _err(matcher, stereo_pair, "brightness_gamma", 2.0)
-    blur = _err(matcher, stereo_pair, "gaussian_blur", 8.0)
-    assert gamma < blur  # photometric change is far more matchable than texture loss
-
-
 def test_scramble_destroys_correspondence(matcher, stereo_pair):
     assert _err(matcher, stereo_pair, "scramble", 1.0) > 0.6
 

@@ -151,11 +151,6 @@ def _contrast_fade(image: Image, alpha: float) -> Image:
     return np.clip((image.astype(np.float32) - mean) * alpha + mean, 0, 255).astype(np.uint8)
 
 
-def _brightness_gamma(image: Image, gamma: float) -> Image:
-    lut = (np.linspace(0.0, 1.0, 256) ** float(gamma) * 255.0).astype(np.uint8)
-    return cv2.LUT(image, lut)
-
-
 def _disparity_scale(image: Image, factor: float) -> Image:
     # horizontal stretch about the image centre -- changes disparity, stays matchable
     h, w = image.shape[:2]
@@ -265,14 +260,6 @@ register(
     "rises",
     "texture",
     fine_severities=(0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1),
-)
-register(
-    "brightness_gamma",
-    _brightness_gamma,
-    (1.25, 1.5, 2.0, 2.5),
-    "flat",
-    "photometric",
-    fine_severities=(1.1, 1.25, 1.4, 1.6, 1.8, 2.0, 2.25, 2.5, 3.0),
 )
 register(
     "disparity_scale",

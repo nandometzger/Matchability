@@ -23,7 +23,6 @@ from pathlib import Path
 # These appear as the first point in the CSV from the old sweep and must be stripped.
 _IDENTITY_SEVERITY: dict[str, float] = {
     "contrast_fade": 1.0,       # multiply by 1.0 = no change
-    "brightness_gamma": 1.0,    # gamma 1.0 = identity
     "downscale_upscale": 1.0,   # scale 1.0 = no resize
     "disparity_scale": 1.0,     # scale 1.0 = no stretch
     "horizontal_shift": 1.0,    # 1 px shift is imperceptible
