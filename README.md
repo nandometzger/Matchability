@@ -114,10 +114,6 @@ E_match / 1-SSIM / 1-PSNR all min-max scaled per distortion and degradation-alig
 curves can be compared regardless of absolute scale). Geometric distortions
 (horizontal_shift, disparity_scale) show SSIM/PSNR degrading while E_match stays flat.*
 
-The raw E_match % + SSIM grid:
-
-![Matchability sensitivity across distortions](experiments/results/sensitivity_grid.png)
-
 ### Distortion catalogue
 
 **Insensitive (flat) — E_match should stay low despite pixel-level degradation:**
@@ -143,21 +139,30 @@ The raw E_match % + SSIM grid:
 
 ### Match overlays (video 0001)
 
-The TP/FP/FN decomposition is visible per match — **green** = true positive (texture preserved),
-**orange** = false positive (hallucination), **red dot** = false negative (omission, drawn on the
-left image since there is no right-image coordinate):
+All matches from either the GT or predicted view are drawn as coloured lines:
+**green** = true positive (TP, matched in both), **orange** = false positive
+(FP / hallucination, matched in pred but not GT), **red** = false negative
+(FN / omission, line goes to where the GT match *should* have been).
 
-| Identity (baseline) | Gaussian blur (σ=8) |
-| :---: | :---: |
-| ![identity](experiments/results/matches_0001_identity.png) | ![blur](experiments/results/matches_0001_gaussian_blur.png) |
+**Insensitive distortions — E_match stays low, mostly green:**
 
-| Horizontal shift (32px, flat) | Vertical shift (6px, epipolar break) |
-| :---: | :---: |
-| ![hshift](experiments/results/matches_0001_horizontal_shift.png) | ![vshift](experiments/results/matches_0001_vertical_shift.png) |
+| Brightness gamma (γ=2.0, 17.6%) | Disparity scale (×1.2, 22.4%) | Horizontal shift (32px, 6.7%) |
+| :---: | :---: | :---: |
+| ![brightness](experiments/results/matches_0001_brightness_gamma.png) | ![disp](experiments/results/matches_0001_disparity_scale.png) | ![hshift](experiments/results/matches_0001_horizontal_shift.png) |
 
-| Occlusion patch (50% area) | |
-| :---: | :---: |
-| ![occ](experiments/results/matches_0001_occlusion_patch.png) | |
+**Sensitive distortions — E_match rises, increasing red/orange:**
+
+| Contrast fade (×0.2, 53.5%) | Downscale+upscale (×0.25, 63.6%) | Elastic warp (a=8, 82.8%) |
+| :---: | :---: | :---: |
+| ![contrast](experiments/results/matches_0001_contrast_fade.png) | ![down](experiments/results/matches_0001_downscale_upscale.png) | ![elastic](experiments/results/matches_0001_elastic_warp.png) |
+
+| Gaussian blur (σ=8, 99.7%) | Gaussian noise (σ=40, 70.7%) | JPEG (q=5, 70.2%) |
+| :---: | :---: | :---: |
+| ![blur](experiments/results/matches_0001_gaussian_blur.png) | ![noise](experiments/results/matches_0001_gaussian_noise.png) | ![jpeg](experiments/results/matches_0001_jpeg.png) |
+
+| Occlusion patch (50%, 70.6%) | Vertical shift (6px, 99.6%) | |
+| :---: | :---: | :---: |
+| ![occ](experiments/results/matches_0001_occlusion_patch.png) | ![vshift](experiments/results/matches_0001_vertical_shift.png) | |
 
 Full numbers (DeDoDe v2, 5 pairs, 768 px, τ=2px):
 
@@ -184,6 +189,7 @@ python scripts/extract_frames.py --input-dir data/raw --output-dir data/frames
 python scripts/run_sensitivity.py --backend dedode --working-resolution 768
 # -> experiments/results/{sensitivity_grid.png, comparison.png,
 #                          sensitivity.csv, summary.md, matches_*.png}
+python scripts/generate_overlays.py   # regenerate overlays only (fast, no sweep)
 ```
 
 To regenerate only plots from an existing CSV (no DeDoDe sweep):
@@ -191,6 +197,36 @@ To regenerate only plots from an existing CSV (no DeDoDe sweep):
 ```bash
 python scripts/plot_results.py
 # -> sensitivity_grid.png, comparison.png, summary.md  (reads sensitivity.csv)
+```
+
+## VAE roundtrip experiment
+
+A separate experiment measures how **VAE encode-decode cycles** degrade the
+Matchability metric. Five publicly available VAEs are compared — from the tiny
+~4 MB autoencoders used for live preview in diffusion pipelines to the full
+KL-regularised VAEs used in Stable Diffusion and SDXL.
+
+![VAE comparison](experiments/results_vae/vae_comparison.png)
+
+| VAE | HuggingFace repo | Architecture | E_match | SSIM | PSNR |
+| --- | --- | --- | --- | --- | --- |
+| TAESD | `madebyollin/taesd` | AutoencoderTiny (SD1) | 50.1% | 0.89 | 25.6 dB |
+| TAESDXL | `madebyollin/taesdxl` | AutoencoderTiny (SDXL) | 49.8% | 0.90 | 32.4 dB |
+| SD-VAE-MSE | `stabilityai/sd-vae-ft-mse` | AutoencoderKL (SD1) | 41.9% | 0.92 | 34.4 dB |
+| SD-VAE-EMA | `stabilityai/sd-vae-ft-ema` | AutoencoderKL (SD1) | 41.8% | 0.92 | 34.0 dB |
+| SDXL-VAE | `madebyollin/sdxl-vae-fp16-fix` | AutoencoderKL (SDXL) | 38.7% | 0.93 | 34.8 dB |
+
+Key finding: all VAEs introduce non-trivial E_match degradation (~39–50%), substantially
+higher than pure geometric distortions at the same SSIM level. The tiny autoencoders
+(TAESD/TAESDXL) have ~8–11pp higher E_match than full KL-VAEs despite SSIM scores
+that look similar — highlighting that E_match is more sensitive to the high-frequency
+texture loss that VAE compression introduces.
+
+```bash
+pip install diffusers accelerate
+python scripts/run_vae_experiment.py --backend dedode
+# -> experiments/results_vae/{vae_comparison.png, vae_sensitivity.csv,
+#                               vae_summary.md, vae_overlays/}
 ```
 
 ## Development
