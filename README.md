@@ -26,21 +26,20 @@ of them have an **epipolar-consistent** match in the GT right view ($M_{gt}$) ve
 
 $$\mathcal{E}_{\text{Match}} = 1 - \frac{|M_{gt}\cap M_{pred}|}{|M_{gt}\cup M_{pred}|} = \frac{N_{FP}+N_{FN}}{N_{TP}+N_{FP}+N_{FN}}$$
 
-- **TP** — correct, matchable detail preserved in both views.
-- **FP** (hallucination) — detail matchable in the prediction but not in the GT (the model *invented* geometry).
-- **FN** (omission) — detail matchable in the GT but lost in the prediction (over-smoothing / blur).
+- 🟢 **TP** — correct, matchable detail preserved in both views.
+- 🟠 **FP** (hallucination) — detail matchable in the prediction but not in the GT (invented geometry).
+- 🔴 **FN** (omission) — detail matchable in the GT but lost in the prediction (over-smoothing / blur).
 
 A **lower** error means the synthesized view keeps consistent, matchable texture along the correct epipolar
-geometry. The full operational definition (including the choices the paper leaves implicit) is in
+geometry. The full operational definition (including choices the paper leaves implicit) is in
 [`docs/metric.md`](docs/metric.md).
 
 ## Install
 
 ```bash
 pip install -e .          # torch + kornia come as core deps; DeDoDe v2 works out of the box
-# optional extras:
-pip install -e ".[viz]"   # matplotlib, for the sensitivity plots
-pip install -e ".[dev]"   # pytest + ruff
+pip install -e ".[viz]"   # + matplotlib, for sensitivity plots
+pip install -e ".[dev]"   # + pytest + ruff
 ```
 
 The DeDoDe v2 checkpoint is auto-downloaded and cached on first use, and the device is auto-selected
@@ -64,7 +63,7 @@ metric = Matchability(tau=2.0, n_keypoints=5000, working_resolution=768, device=
 ### Command line
 
 ```bash
-matchability left.png right_gt.png right_pred.png            # uses DeDoDe v2
+matchability left.png right_gt.png right_pred.png
 matchability left.png right_gt.png right_pred.png --backend classical --viz overlay.png
 ```
 
@@ -78,11 +77,13 @@ matchability left.png right_gt.png right_pred.png --backend classical --viz over
 
 The metric core is matcher-agnostic — pass any `Matcher` to `Matchability(matcher=...)`.
 
+---
+
 ## Empirical sensitivity study
 
-### What was run
+### Setup
 
-We swept 13 distortions across their severity ranges on 5 real **Apple Vision Pro** spatial video
+We swept 11 distortions across their severity ranges on 5 real **Apple Vision Pro** spatial video
 (MV-HEVC format) stereo pairs. For each pair, the GT right view was distorted to simulate a
 *predicted* right view (`R_pred = distort(R_gt)`), and `E_match` was computed with DeDoDe v2
 (768 px, 5000 keypoints, τ=2 px) alongside SSIM and PSNR for comparison. This reproduces the
@@ -91,28 +92,21 @@ sensitivity analysis from Appendix D.1 of the Elastic3D paper.
 Each stereo pair is a single frame extracted from a 2200×2200 AVP video (left and right eyes
 stored as separate views in one MV-HEVC file). Metrics are averaged over the 5 videos.
 
-### Expected results
-
-The key discriminating property of `E_match` vs. plain image quality metrics (SSIM / PSNR):
-- **Texture distortions** (blur, noise, JPEG) → `E_match` rises sharply as keypoints are destroyed.
-  SSIM / PSNR also degrade, but `E_match` is more sensitive to early, subtle texture loss.
-- **Geometric distortions** (horizontal shift, disparity scale) → `E_match` stays flat because
-  DeDoDe is translation-invariant. SSIM / PSNR degrade (pixels move) while stereo fidelity is intact.
-- **Epipolar violations** (vertical shift) → `E_match` rises because matches become inconsistent
-  with the epipolar constraint (|Δy| > τ = 2px), while SSIM/PSNR barely change for small shifts.
-
-This decoupling — sensitivity to texture loss and epipolar violations, robustness to pure geometry
-changes — is what makes `E_match` a better proxy for stereo comfort than pixel-level metrics.
-
 ### Results
-
-E_match / 1-SSIM / 1-PSNR all min-max scaled per distortion and degradation-aligned (all curves rise with severity):
 
 ![Comparison](experiments/results/comparison.png)
 
-*Crimson = E_match, steel-blue = 1−SSIM, sea-green = 1−PSNR (normalised per-distortion so
-curves can be compared regardless of absolute scale). Geometric distortions
-(horizontal_shift, disparity_scale) show SSIM/PSNR degrading while E_match stays flat.*
+*Crimson = E_match, steel-blue = 1−SSIM, sea-green = 1−PSNR (normalised per-distortion).
+Top row: insensitive distortions — E_match stays flat while SSIM/PSNR degrade (pixel-level change
+without stereo-fidelity loss). Remaining rows: sensitive distortions — E_match rises sharply.*
+
+### Why E_match is different from SSIM/PSNR
+
+- **Texture distortions** (blur, noise, JPEG) → `E_match` rises sharply as keypoints are destroyed.
+- **Geometric distortions** (horizontal shift, disparity scale) → `E_match` stays flat because
+  DeDoDe is translation-invariant. SSIM/PSNR degrade while stereo fidelity is intact.
+- **Epipolar violations** (vertical shift) → `E_match` rises because matches are filtered by
+  the epipolar constraint (|Δy| > τ = 2px), while SSIM/PSNR barely change for small shifts.
 
 ### Distortion catalogue
 
@@ -139,18 +133,16 @@ curves can be compared regardless of absolute scale). Geometric distortions
 
 ### Match overlays (video 0001)
 
-All matches from either the GT or predicted view are drawn as coloured lines:
-**green** = true positive (TP, matched in both), **orange** = false positive
-(FP / hallucination, matched in pred but not GT), **red** = false negative
-(FN / omission, line goes to where the GT match *should* have been).
+Matches are drawn as coloured lines on a left ∥ right composite:
+🟢 **TP** — preserved in both GT and pred &nbsp;|&nbsp; 🟠 **FP** — in pred but not GT (hallucination) &nbsp;|&nbsp; 🔴 **FN** — in GT but absent in pred (omission, line points to expected location)
 
-**Insensitive distortions — E_match stays low, mostly green:**
+**Insensitive — mostly 🟢, E_match stays low:**
 
 | Brightness gamma (γ=2.0, 17.6%) | Disparity scale (×1.2, 22.4%) | Horizontal shift (32px, 6.7%) |
 | :---: | :---: | :---: |
 | ![brightness](experiments/results/matches_0001_brightness_gamma.png) | ![disp](experiments/results/matches_0001_disparity_scale.png) | ![hshift](experiments/results/matches_0001_horizontal_shift.png) |
 
-**Sensitive distortions — E_match rises, increasing red/orange:**
+**Sensitive — increasing 🔴🟠 with severity:**
 
 | Contrast fade (×0.2, 53.5%) | Downscale+upscale (×0.25, 63.6%) | Elastic warp (a=8, 82.8%) |
 | :---: | :---: | :---: |
@@ -185,49 +177,46 @@ Full numbers (DeDoDe v2, 5 pairs, 768 px, τ=2px):
 To reproduce the study from scratch:
 
 ```bash
-python scripts/extract_frames.py --input-dir data/raw --output-dir data/frames
-python scripts/run_sensitivity.py --backend dedode --working-resolution 768
-# -> experiments/results/{sensitivity_grid.png, comparison.png,
-#                          sensitivity.csv, summary.md, matches_*.png}
-python scripts/generate_overlays.py   # regenerate overlays only (fast, no sweep)
+python experiments/scripts/extract_frames.py --input-dir data/raw --output-dir data/frames
+python experiments/scripts/run_sensitivity.py --backend dedode --working-resolution 768
+python experiments/scripts/generate_overlays.py   # regenerate overlays only (fast)
 ```
 
-To regenerate only plots from an existing CSV (no DeDoDe sweep):
+To regenerate only the plots from an existing CSV:
 
 ```bash
-python scripts/plot_results.py
-# -> sensitivity_grid.png, comparison.png, summary.md  (reads sensitivity.csv)
+python experiments/scripts/plot_results.py
 ```
+
+---
 
 ## VAE roundtrip experiment
 
-A separate experiment measures how **VAE encode-decode cycles** degrade the
-Matchability metric. Five publicly available VAEs are compared — from the tiny
-~4 MB autoencoders used for live preview in diffusion pipelines to the full
-KL-regularised VAEs used in Stable Diffusion and SDXL.
+A separate experiment measures how **VAE encode-decode cycles** degrade the Matchability metric.
+Five publicly available VAEs are compared — from the tiny ~4 MB autoencoders used for live preview
+in diffusion pipelines to the full KL-regularised VAEs used in Stable Diffusion and SDXL.
 
 ![VAE comparison](experiments/results_vae/vae_comparison.png)
 
-| VAE | HuggingFace repo | Architecture | E_match | SSIM | PSNR |
-| --- | --- | --- | --- | --- | --- |
-| TAESD | `madebyollin/taesd` | AutoencoderTiny (SD1) | 50.1% | 0.89 | 25.6 dB |
-| TAESDXL | `madebyollin/taesdxl` | AutoencoderTiny (SDXL) | 49.8% | 0.90 | 32.4 dB |
-| SD-VAE-MSE | `stabilityai/sd-vae-ft-mse` | AutoencoderKL (SD1) | 41.9% | 0.92 | 34.4 dB |
-| SD-VAE-EMA | `stabilityai/sd-vae-ft-ema` | AutoencoderKL (SD1) | 41.8% | 0.92 | 34.0 dB |
-| SDXL-VAE | `madebyollin/sdxl-vae-fp16-fix` | AutoencoderKL (SDXL) | 38.7% | 0.93 | 34.8 dB |
+| VAE | HuggingFace repo | Architecture | E_match |
+| --- | --- | --- | --- |
+| TAESD | `madebyollin/taesd` | AutoencoderTiny (SD1) | 50.1% |
+| TAESDXL | `madebyollin/taesdxl` | AutoencoderTiny (SDXL) | 49.8% |
+| SD-VAE-MSE | `stabilityai/sd-vae-ft-mse` | AutoencoderKL (SD1) | 41.9% |
+| SD-VAE-EMA | `stabilityai/sd-vae-ft-ema` | AutoencoderKL (SD1) | 41.8% |
+| SDXL-VAE | `madebyollin/sdxl-vae-fp16-fix` | AutoencoderKL (SDXL) | 38.7% |
 
-Key finding: all VAEs introduce non-trivial E_match degradation (~39–50%), substantially
-higher than pure geometric distortions at the same SSIM level. The tiny autoencoders
-(TAESD/TAESDXL) have ~8–11pp higher E_match than full KL-VAEs despite SSIM scores
-that look similar — highlighting that E_match is more sensitive to the high-frequency
-texture loss that VAE compression introduces.
+All VAEs introduce non-trivial E_match degradation (~39–50%), substantially higher than pure
+geometric distortions at the same SSIM level. The tiny autoencoders (TAESD/TAESDXL) show
+~8–11pp higher E_match than full KL-VAEs — highlighting that E_match is more sensitive to the
+high-frequency texture loss that VAE compression introduces.
 
 ```bash
 pip install diffusers accelerate
-python scripts/run_vae_experiment.py --backend dedode
-# -> experiments/results_vae/{vae_comparison.png, vae_sensitivity.csv,
-#                               vae_summary.md, vae_overlays/}
+python experiments/scripts/run_vae_experiment.py --backend dedode
 ```
+
+---
 
 ## Development
 
@@ -238,9 +227,10 @@ pytest -m dedode           # slow: real DeDoDe v2 (downloads weights once)
 ruff check .
 ```
 
-Built test-first. CI runs the fast suite on every push/PR; an opt-in job exercises the real DeDoDe backend.
-Commits follow [Conventional Commits](https://www.conventionalcommits.org/) and versioning is automated with
-[release-please](https://github.com/googleapis/release-please) — see [`CONTRIBUTING.md`](CONTRIBUTING.md).
+CI runs the fast suite on every push/PR. An opt-in job exercises the real DeDoDe backend on a
+weekly schedule. Commits follow [Conventional Commits](https://www.conventionalcommits.org/) and
+versioning is automated with [release-please](https://github.com/googleapis/release-please) — see
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Citation
 

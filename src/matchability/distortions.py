@@ -223,7 +223,7 @@ register(
     (1.0, 2.0, 4.0, 8.0, 16.0, 32.0),
     "flat",
     "geometric",
-    fine_severities=(1.0, 2.0, 4.0, 6.0, 8.0, 12.0, 16.0, 24.0, 32.0, 48.0, 64.0),
+    fine_severities=(2.0, 4.0, 6.0, 8.0, 12.0, 16.0, 24.0, 32.0, 48.0, 64.0),
 )
 register(
     "vertical_shift",
@@ -256,7 +256,7 @@ register(
     (0.75, 0.5, 0.35, 0.25, 0.15),
     "rises",
     "texture",
-    fine_severities=(1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.25, 0.2, 0.15, 0.1),
+    fine_severities=(0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.25, 0.2, 0.15, 0.1),
 )
 register(
     "contrast_fade",
@@ -264,7 +264,7 @@ register(
     (0.8, 0.6, 0.4, 0.2, 0.1),
     "rises",
     "texture",
-    fine_severities=(1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1),
+    fine_severities=(0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1),
 )
 register(
     "brightness_gamma",
@@ -272,7 +272,7 @@ register(
     (1.25, 1.5, 2.0, 2.5),
     "flat",
     "photometric",
-    fine_severities=(1.0, 1.1, 1.25, 1.4, 1.6, 1.8, 2.0, 2.25, 2.5, 3.0),
+    fine_severities=(1.1, 1.25, 1.4, 1.6, 1.8, 2.0, 2.25, 2.5, 3.0),
 )
 register(
     "disparity_scale",
@@ -280,7 +280,7 @@ register(
     (1.02, 1.05, 1.1, 1.2),
     "flat",
     "geometric",
-    fine_severities=(1.0, 1.01, 1.02, 1.03, 1.05, 1.08, 1.1, 1.15, 1.2, 1.3),
+    fine_severities=(1.01, 1.02, 1.03, 1.05, 1.08, 1.1, 1.15, 1.2, 1.3),
 )
 register(
     "elastic_warp",

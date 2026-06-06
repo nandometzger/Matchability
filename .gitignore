@@ -35,6 +35,9 @@ htmlcov/
 .idea/
 .vscode/
 
+# Claude Code project-local config (contains project guidance for Claude)
+CLAUDE.md
+
 # Experiment scratch (we DO commit experiments/results/*.png and *.csv explicitly)
 experiments/**/*.tmp
 experiments/**/*.log

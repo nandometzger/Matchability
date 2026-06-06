@@ -1,14 +1,12 @@
 """Re-plot all results from an existing sensitivity.csv without re-running DeDoDe.
 
 Reads ``experiments/results/sensitivity.csv``, aggregates over videos, then writes:
-  - ``sensitivity_grid.png``           — E_match + SSIM per distortion
-  - ``comparison_sweep.png``           — E_match / 1-SSIM / 1-PSNR (per-sweep normalised)
-  - ``comparison_global.png``          — same, globally normalised
-  - ``summary.md``                     — markdown table with PSNR column
+  - ``comparison.png``   — E_match / 1-SSIM / 1-PSNR (per-sweep normalised)
+  - ``summary.md``       — markdown table with PSNR column
 
-For match overlays (require the actual image data and DeDoDe), run
-``run_sensitivity.py --backend dedode``.  This script generates everything
-derivable from the CSV alone.
+Panels are ordered flat (insensitive) first, then rises (sensitive).
+Identity-equivalent starting severities (0.0 or the no-op value for each
+distortion) are stripped before plotting so curves start at genuine degradation.
 
 Usage:
     python scripts/plot_results.py [--csv experiments/results/sensitivity.csv]
@@ -20,6 +18,17 @@ from __future__ import annotations
 import argparse
 import csv
 from pathlib import Path
+
+# Severity values that are equivalent to identity (R_pred == R_gt) for each distortion.
+# These appear as the first point in the CSV from the old sweep and must be stripped.
+_IDENTITY_SEVERITY: dict[str, float] = {
+    "contrast_fade": 1.0,       # multiply by 1.0 = no change
+    "brightness_gamma": 1.0,    # gamma 1.0 = identity
+    "downscale_upscale": 1.0,   # scale 1.0 = no resize
+    "disparity_scale": 1.0,     # scale 1.0 = no stretch
+    "horizontal_shift": 1.0,    # 1 px shift is imperceptible
+    # six distortions previously had severity=0.0 as identity (covered below)
+}
 
 
 def load_csv(path: Path) -> list[dict]:
@@ -44,47 +53,51 @@ def main(argv: list[str] | None = None) -> int:
 
     from matchability import distortions as D
     from matchability.report import aggregate, write_summary
-    from matchability.viz import plot_distortion_grid, plot_metric_comparison_grid
+    from matchability.viz import plot_metric_comparison_grid
 
     rows = load_csv(csv_path)
-    # Drop anchor distortions (identity / scramble) — single-point, PSNR=∞ degenerate cases.
-    sweep_names = set(D.sweep_distortions())
-    rows = [r for r in rows if r["distortion"] in sweep_names]
-    # Drop severity=0.0 rows — degenerate identity point (R_pred == R_gt, PSNR=∞).
-    rows = [r for r in rows if r["severity"] != 0.0]
 
-    # Parse numeric fields — CSV stores everything as strings.
+    # Parse numeric fields first so comparisons work.
     for row in rows:
         row["severity"] = float(row["severity"])
         row["error"] = float(row["error"])
         row["ssim"] = float(row["ssim"])
         row["psnr"] = float(row["psnr"])
 
+    # Drop anchor distortions (identity / scramble).
+    sweep_names = set(D.sweep_distortions())
+    rows = [r for r in rows if r["distortion"] in sweep_names]
+    # Drop global severity=0.0 (degenerate identity from old sweeps).
+    rows = [r for r in rows if r["severity"] != 0.0]
+    # Drop per-distortion identity severities.
+    rows = [
+        r for r in rows
+        if not (
+            r["distortion"] in _IDENTITY_SEVERITY
+            and r["severity"] == _IDENTITY_SEVERITY[r["distortion"]]
+        )
+    ]
+
     videos = sorted({r["video"] for r in rows})
-    distortions = list(dict.fromkeys(r["distortion"] for r in rows))  # preserve order
     n_pairs = len(videos)
-    print(f"loaded {len(rows)} rows · {n_pairs} videos · {len(distortions)} distortions")
+    print(f"after filtering: {len(rows)} rows · {n_pairs} videos")
 
-    per = aggregate(rows)
+    per_raw = aggregate(rows)
 
-    # 1) E_match + SSIM grid (original single-metric view)
-    grid_path = plot_distortion_grid(
-        per,
-        out / "sensitivity_grid.png",
-        title=f"Matchability sensitivity ({n_pairs} pairs)",
-    )
-    print(f"wrote {grid_path}")
+    # Reorder: flat (insensitive) distortions first, then rises (sensitive).
+    ordered = D.sweep_distortions()  # already flat-first
+    per = {n: per_raw[n] for n in ordered if n in per_raw}
 
-    # 2) Three-metric comparison grid (per-sweep normalised)
+    # Comparison grid — flat-first, ncols=3 so all flat fill one row
     cmp_path = plot_metric_comparison_grid(
         per,
         out / "comparison.png",
         normalize="sweep",
         title=f"E_match / 1−SSIM / 1−PSNR  (per-sweep normalised, {n_pairs} pairs)",
+        ncols=3,
     )
     print(f"wrote {cmp_path}")
 
-    # 3) Markdown summary with PSNR column
     meta = (
         f"- pairs: {n_pairs}  ·  videos: {', '.join(videos)}\n"
         "- `R_pred = distort(R_gt)` for each severity; DeDoDe v2 on MPS, 768 px, 5000 kpts."

@@ -37,13 +37,13 @@ import torch
 from matchability.imageio_util import load_image
 from matchability.metric import _membership_mask
 from matchability.quality import psnr, ssim
-from matchability.report import PSNR_CAP_DB, aggregate, write_summary
+from matchability.report import aggregate, write_summary
 from matchability.types import MatchabilityResult
 from matchability.viz import draw_matches
 
 
 def _plot_vae_bar(per: dict, out_path, *, n_pairs: int) -> None:
-    """Bar chart comparing E_match / 1-SSIM / 1-PSNR across VAE architectures."""
+    """Bar chart of E_match (%) across VAE architectures."""
     import matplotlib
 
     matplotlib.use("Agg", force=True)
@@ -51,24 +51,21 @@ def _plot_vae_bar(per: dict, out_path, *, n_pairs: int) -> None:
 
     names = list(per)
     ematch = [per[n]["error"][0] * 100 for n in names]
-    one_ssim = [(1 - per[n]["ssim"][0]) * 100 for n in names]
-    psnr_norm = [
-        (1 - min(per[n]["psnr"][0], PSNR_CAP_DB) / PSNR_CAP_DB) * 100 for n in names
-    ]
 
-    x = np.arange(len(names))
-    w = 0.25
-    fig, ax = plt.subplots(figsize=(max(6, len(names) * 1.4), 4))
-    ax.bar(x - w, ematch, w, label="E_match (%)", color="crimson", alpha=0.85)
-    ax.bar(x, one_ssim, w, label="(1−SSIM)×100", color="steelblue", alpha=0.85)
-    ax.bar(x + w, psnr_norm, w, label="(1−PSNR/100)×100", color="seagreen", alpha=0.85)
-    ax.set_xticks(x)
-    ax.set_xticklabels(names, rotation=20, ha="right", fontsize=9)
-    ax.set_ylabel("degradation (%)")
-    ax.set_ylim(0, max(max(ematch), max(one_ssim), max(psnr_norm)) * 1.2 + 2)
-    ax.legend(fontsize=8)
+    fig, ax = plt.subplots(figsize=(max(5, len(names) * 1.2), 4))
+    bars = ax.bar(names, ematch, color="crimson", alpha=0.85, edgecolor="darkred", linewidth=0.8)
+    for bar, val in zip(bars, ematch, strict=False):
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + 0.5,
+            f"{val:.1f}%",
+            ha="center", va="bottom", fontsize=9, fontweight="bold",
+        )
+    ax.set_ylabel("E_match (%)", color="crimson")
+    ax.set_ylim(0, max(ematch) * 1.25 + 2)
+    ax.tick_params(axis="x", rotation=20)
     ax.grid(axis="y", alpha=0.3)
-    ax.set_title(f"VAE roundtrip degradation ({n_pairs} pairs, DeDoDe v2)", fontsize=11)
+    ax.set_title(f"Matchability Error — VAE roundtrip ({n_pairs} pairs, DeDoDe v2)", fontsize=11)
     fig.tight_layout()
     fig.savefig(out_path, dpi=110)
     plt.close(fig)
