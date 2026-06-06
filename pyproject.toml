@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "matchability"
-version = "0.1.0"
+version = "0.1.1"
 description = "Matchability Error: a DeDoDe-v2 stereoscopic-fidelity / binocular-rivalry metric from Elastic3D, reimplemented with tests and CI."
 readme = "README.md"
 requires-python = ">=3.11"

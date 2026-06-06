@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.1](https://github.com/nandometzger/Matchability/compare/matchability-v0.1.0...matchability-v0.1.1) (2026-06-06)
+
+
+### Features
+
+* add TAESD3/TAEF1 VAEs; run full 7-VAE experiment, update README ([a6c8643](https://github.com/nandometzger/Matchability/commit/a6c86439dd326fa8caf3aebbac3b484b7fba7261))
+* remove brightness_gamma distortion ([15b07a0](https://github.com/nandometzger/Matchability/commit/15b07a0933a1c641092e6abf21783781daac220e))
+
+
+### Documentation
+
+* sync README and summary files with current CSV data ([a638cd1](https://github.com/nandometzger/Matchability/commit/a638cd1d73f57943501fc50676ca36fab2153461))
+
 ## [0.1.0](https://github.com/nandometzger/Matchability/compare/matchability-v0.1.0...matchability-v0.1.0) (2026-06-06)
 
 
