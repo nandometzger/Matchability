@@ -17,14 +17,15 @@ from pathlib import Path
 
 import cv2
 
+from experiments.lib.plots import plot_distortion_grid, plot_metric_comparison_grid
+from experiments.lib.quality import psnr, ssim
+from experiments.lib.report import aggregate, write_summary
 from matchability import distortions as D
 from matchability.imageio_util import load_image
 from matchability.matchers.base import Matcher
 from matchability.metric import _membership_mask
-from matchability.quality import psnr, ssim
-from matchability.report import aggregate, write_summary
 from matchability.types import MatchabilityResult
-from matchability.viz import draw_matches, plot_distortion_grid, plot_metric_comparison_grid
+from matchability.viz import draw_matches
 
 # One representative severity per sweep distortion rendered as a Fig-10-style overlay.
 # Anchors (identity / scramble) are excluded — they're single-point degenerate cases.
@@ -62,7 +63,7 @@ def load_pairs(frames_dir: Path, videos_dir: Path, resolution: int, frame_index:
                 stem = lp.name.replace("_left.png", "")
                 pairs.append((stem, load_image(lp, resolution), load_image(rp, resolution)))
         return pairs
-    from matchability.io_video import extract_stereo_frame
+    from experiments.lib.io_video import extract_stereo_frame
 
     for video in sorted(videos_dir.glob("*.mov")):
         left, right = extract_stereo_frame(video, frame_index)

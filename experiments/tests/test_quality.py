@@ -1,9 +1,16 @@
 """Unit tests for SSIM / PSNR helpers."""
 
 import numpy as np
+import pytest
 
+from experiments.lib.quality import psnr, ssim
 from matchability import distortions as D
-from matchability.quality import psnr, ssim
+
+
+@pytest.fixture
+def textured_image():
+    rng = np.random.default_rng(0)
+    return rng.integers(0, 256, (128, 128, 3), dtype=np.uint8)
 
 
 def test_ssim_identical_is_one(textured_image):

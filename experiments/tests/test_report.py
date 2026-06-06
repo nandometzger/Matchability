@@ -2,7 +2,7 @@
 
 import pytest
 
-from matchability.report import aggregate, write_summary
+from experiments.lib.report import aggregate, write_summary
 
 
 def _row(distortion, severity, error, ssim, psnr, trend="rises"):

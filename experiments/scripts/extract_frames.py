@@ -11,7 +11,7 @@ from pathlib import Path
 
 import cv2
 
-from matchability.io_video import extract_stereo_frame
+from experiments.lib.io_video import extract_stereo_frame
 
 
 def main(argv: list[str] | None = None) -> int:

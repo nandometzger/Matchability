@@ -1,7 +1,7 @@
 """Aggregate sensitivity rows (over videos) and render the markdown summary.
 
-Shared by the live run (`run_sensitivity.py`) and the re-plot script
-(`plot_results.py`) so both produce identical aggregates.
+Shared by the live run (run_sensitivity.py) and the re-plot script
+(plot_results.py) so both produce identical aggregates.
 """
 
 from __future__ import annotations

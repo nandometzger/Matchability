@@ -5,7 +5,6 @@
 
 | distortion | expected | E_match min → max | SSIM min → max | PSNR(dB) min → max |
 | --- | --- | --- | --- | --- |
-| brightness_gamma | flat | 5.3% → 37.1% | 0.99 → 0.29 | 29.8 → 10.7 |
 | disparity_scale | flat | 20.1% → 43.5% | 0.90 → 0.70 | 30.1 → 18.6 |
 | horizontal_shift | flat | 12.1% → 27.5% | 0.82 → 0.66 | 27.9 → 16.8 |
 | contrast_fade | rises | 7.8% → 83.8% | 1.00 → 0.76 | 34.7 → 15.7 |

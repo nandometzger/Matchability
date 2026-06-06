@@ -50,9 +50,9 @@ def main(argv: list[str] | None = None) -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
+    from experiments.lib.plots import plot_metric_comparison_grid
+    from experiments.lib.report import aggregate, write_summary
     from matchability import distortions as D
-    from matchability.report import aggregate, write_summary
-    from matchability.viz import plot_metric_comparison_grid
 
     rows = load_csv(csv_path)
 

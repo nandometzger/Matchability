@@ -50,13 +50,15 @@ Repository = "https://github.com/nandometzger/Matchability"
 Issues = "https://github.com/nandometzger/Matchability/issues"
 
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["src", "."]
+include = ["matchability*", "experiments*"]
 
 [tool.setuptools.package-data]
 matchability = ["py.typed"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["tests", "experiments/tests"]
+pythonpath = ["src", "."]
 markers = [
     "dedode: tests that load the real DeDoDe v2 model (downloads weights, slow; opt-in with -m dedode)",
 ]
@@ -69,11 +71,11 @@ filterwarnings = [
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-src = ["src", "tests", "scripts"]
+src = ["src", "tests", "experiments"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "W"]
 ignore = ["B008"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["matchability"]
+known-first-party = ["matchability", "experiments"]

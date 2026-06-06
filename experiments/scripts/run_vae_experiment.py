@@ -1,15 +1,13 @@
-"""VAE encoding-decoding sensitivity experiment — 5 VAE architectures.
+"""VAE encoding-decoding sensitivity experiment — 8 VAE architectures.
 
-Compares how five different VAE models degrade the Matchability metric when used
+Compares how eight different VAE models degrade the Matchability metric when used
 to encode-decode the right view. All models are publicly available on HuggingFace,
 require no authentication, and run on Apple Silicon MPS.
 
-VAEs tested (roughly worst → best reconstruction quality):
-  1. TAESD       madebyollin/taesd           ~4 MB   SD1 tiny autoencoder
-  2. TAESDXL     madebyollin/taesdxl         ~5 MB   SDXL tiny autoencoder
-  3. SD-VAE-MSE  stabilityai/sd-vae-ft-mse   ~80 MB  SD1 full VAE (MSE fine-tune)
-  4. SD-VAE-EMA  stabilityai/sd-vae-ft-ema   ~80 MB  SD1 full VAE (EMA fine-tune)
-  5. SDXL-VAE    madebyollin/sdxl-vae-fp16-fix ~168 MB SDXL full VAE
+Three architecture families:
+  AutoencoderTiny  — tiny distilled AEs for SD1 / SDXL / SD3 / FLUX
+  AutoencoderKL    — full KL-regularised VAEs (SD1 / SDXL)
+  AutoencoderDC    — SANA DC-AE from MIT Han Lab (non-SD family)
 
 Results are written to experiments/results_vae/:
   vae_sensitivity.csv    — per-pair, per-VAE: E_match, SSIM, PSNR
@@ -34,10 +32,10 @@ import cv2
 import numpy as np
 import torch
 
+from experiments.lib.quality import psnr, ssim
+from experiments.lib.report import aggregate, write_summary
 from matchability.imageio_util import load_image
 from matchability.metric import _membership_mask
-from matchability.quality import psnr, ssim
-from matchability.report import aggregate, write_summary
 from matchability.types import MatchabilityResult
 from matchability.viz import draw_matches
 
@@ -70,14 +68,21 @@ def _plot_vae_bar(per: dict, out_path, *, n_pairs: int) -> None:
     fig.savefig(out_path, dpi=110)
     plt.close(fig)
 
-# Five VAEs ordered from worst to best expected reconstruction quality.
+# VAEs ordered roughly worst → best expected reconstruction quality.
+# Three families:
+#   AutoencoderTiny  — tiny distilled AEs (SD/SDXL/SD3/FLUX flavours)
+#   AutoencoderKL    — full KL-regularised VAEs (SD1 / SDXL)
+#   AutoencoderDC    — SANA DC-AE (non-SD family, MIT Han Lab)
 # Each entry: (display_name, hf_repo, loader_cls_name, severity_index)
 VAES: list[tuple[str, str, str, float]] = [
-    ("TAESD", "madebyollin/taesd", "AutoencoderTiny", 1.0),
-    ("TAESDXL", "madebyollin/taesdxl", "AutoencoderTiny", 2.0),
-    ("SD-VAE-MSE", "stabilityai/sd-vae-ft-mse", "AutoencoderKL", 3.0),
-    ("SD-VAE-EMA", "stabilityai/sd-vae-ft-ema", "AutoencoderKL", 4.0),
-    ("SDXL-VAE", "madebyollin/sdxl-vae-fp16-fix", "AutoencoderKL", 5.0),
+    ("TAESD",      "madebyollin/taesd",                "AutoencoderTiny", 1.0),
+    ("TAESDXL",    "madebyollin/taesdxl",              "AutoencoderTiny", 2.0),
+    ("TAESD3",     "madebyollin/taesd3",               "AutoencoderTiny", 3.0),
+    ("TAEF1",      "madebyollin/taef1",                "AutoencoderTiny", 4.0),
+    ("SD-VAE-MSE", "stabilityai/sd-vae-ft-mse",        "AutoencoderKL",   5.0),
+    ("SD-VAE-EMA", "stabilityai/sd-vae-ft-ema",        "AutoencoderKL",   6.0),
+    ("SDXL-VAE",   "madebyollin/sdxl-vae-fp16-fix",    "AutoencoderKL",   7.0),
+    ("DC-AE",      "mit-han-lab/dc-ae-f16c16-sana-1.1","AutoencoderDC",   8.0),
 ]
 
 _MODEL_CACHE: dict[str, object] = {}
@@ -118,10 +123,13 @@ def vae_roundtrip(
     tensor = tensor.to(device)
     with torch.no_grad():
         encoded = model.encode(tensor)
-        # AutoencoderTiny returns .latents directly;
-        # AutoencoderKL returns .latent_dist (a diagonal Gaussian — use mode for determinism).
+        # AutoencoderTiny  → .latents
+        # AutoencoderDC    → .latent  (SANA, non-SD family)
+        # AutoencoderKL    → .latent_dist (DiagonalGaussian — use mode for determinism)
         if hasattr(encoded, "latents"):
             latent = encoded.latents
+        elif hasattr(encoded, "latent"):
+            latent = encoded.latent
         else:
             latent = encoded.latent_dist.mode()
         decoded = model.decode(latent).sample
@@ -160,12 +168,33 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--n-keypoints", type=int, default=5000)
     p.add_argument("--tau", type=float, default=2.0)
     p.add_argument("--viz-video", default=None)
+    p.add_argument(
+        "--plot-only", action="store_true",
+        help="Re-plot from existing vae_sensitivity.csv without re-running inference",
+    )
     args = p.parse_args(argv)
 
     os.environ.setdefault("PYTORCH_ENABLE_MPS_FALLBACK", "1")
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
+
+    if args.plot_only:
+        import csv as _csv
+
+        csv_path = out / "vae_sensitivity.csv"
+        with open(csv_path, newline="") as f:
+            rows = list(_csv.DictReader(f))
+        for row in rows:
+            row["error"] = float(row["error"])
+            row["ssim"] = float(row["ssim"])
+            row["psnr"] = float(row["psnr"])
+        per = aggregate(rows)
+        n_pairs = len({r["video"] for r in rows})
+        _plot_vae_bar(per, out / "vae_comparison.png", n_pairs=n_pairs)
+        print(f"re-plotted {len(per)} VAEs from {csv_path}")
+        return 0
+
     overlays_dir = out / "vae_overlays"
     overlays_dir.mkdir(exist_ok=True)
 
