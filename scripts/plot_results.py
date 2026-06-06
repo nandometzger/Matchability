@@ -50,6 +50,8 @@ def main(argv: list[str] | None = None) -> int:
     # Drop anchor distortions (identity / scramble) — single-point, PSNR=∞ degenerate cases.
     sweep_names = set(D.sweep_distortions())
     rows = [r for r in rows if r["distortion"] in sweep_names]
+    # Drop severity=0.0 rows — degenerate identity point (R_pred == R_gt, PSNR=∞).
+    rows = [r for r in rows if r["severity"] != 0.0]
 
     # Parse numeric fields — CSV stores everything as strings.
     for row in rows:

@@ -215,7 +215,7 @@ register(
     (0.5, 1.0, 2.0, 4.0, 8.0),
     "rises",
     "texture",
-    fine_severities=(0.0, 0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0),
+    fine_severities=(0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0, 6.0, 8.0, 12.0, 16.0),
 )
 register(
     "horizontal_shift",
@@ -223,7 +223,7 @@ register(
     (1.0, 2.0, 4.0, 8.0, 16.0, 32.0),
     "flat",
     "geometric",
-    fine_severities=(0.0, 1.0, 2.0, 4.0, 6.0, 8.0, 12.0, 16.0, 24.0, 32.0, 48.0, 64.0),
+    fine_severities=(1.0, 2.0, 4.0, 6.0, 8.0, 12.0, 16.0, 24.0, 32.0, 48.0, 64.0),
 )
 register(
     "vertical_shift",
@@ -232,7 +232,7 @@ register(
     "rises",
     "geometric",
     # densely sampled across the epipolar threshold (tau) to show the transition
-    fine_severities=(0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0),
+    fine_severities=(0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0),
 )
 register(
     "gaussian_noise",
@@ -240,7 +240,7 @@ register(
     (5.0, 10.0, 20.0, 40.0, 80.0),
     "rises",
     "texture",
-    fine_severities=(0.0, 2.0, 5.0, 8.0, 12.0, 16.0, 24.0, 32.0, 48.0, 64.0, 80.0),
+    fine_severities=(2.0, 5.0, 8.0, 12.0, 16.0, 24.0, 32.0, 48.0, 64.0, 80.0),
 )
 register(
     "jpeg",
@@ -288,7 +288,7 @@ register(
     (1.0, 2.0, 4.0, 8.0, 12.0),
     "rises",
     "geometric",
-    fine_severities=(0.0, 0.5, 1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 10.0, 12.0, 16.0),
+    fine_severities=(0.5, 1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 10.0, 12.0, 16.0),
 )
 register(
     "occlusion_patch",
@@ -296,6 +296,6 @@ register(
     (0.05, 0.1, 0.2, 0.35, 0.5),
     "rises",
     "structural",
-    fine_severities=(0.0, 0.02, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6),
+    fine_severities=(0.02, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6),
 )
 register("scramble", _scramble, (1.0,), "anchor_high", "anchor", fine_severities=(1.0,))
