@@ -191,7 +191,7 @@ python experiments/scripts/plot_results.py
 ## VAE roundtrip experiment
 
 A separate experiment measures how **VAE encode-decode cycles** degrade the Matchability metric.
-Eight publicly available VAEs are compared across three architecture families:
+Seven publicly available VAEs are compared across two architecture families:
 
 ![VAE comparison](experiments/results_vae/vae_comparison.png)
 
@@ -199,16 +199,15 @@ Eight publicly available VAEs are compared across three architecture families:
 | --- | --- | --- | --- |
 | TAESD | `madebyollin/taesd` | AutoencoderTiny (SD1) | 50.1% |
 | TAESDXL | `madebyollin/taesdxl` | AutoencoderTiny (SDXL) | 49.8% |
-| TAESD3 | `madebyollin/taesd3` | AutoencoderTiny (SD3) | — |
-| TAEF1 | `madebyollin/taef1` | AutoencoderTiny (FLUX) | — |
+| TAESD3 | `madebyollin/taesd3` | AutoencoderTiny (SD3) | 36.2% |
+| TAEF1 | `madebyollin/taef1` | AutoencoderTiny (FLUX) | 37.5% |
 | SD-VAE-MSE | `stabilityai/sd-vae-ft-mse` | AutoencoderKL (SD1) | 41.9% |
 | SD-VAE-EMA | `stabilityai/sd-vae-ft-ema` | AutoencoderKL (SD1) | 41.8% |
 | SDXL-VAE | `madebyollin/sdxl-vae-fp16-fix` | AutoencoderKL (SDXL) | 38.7% |
-| DC-AE | `mit-han-lab/dc-ae-f16c16-sana-1.1` | AutoencoderDC (SANA, non-SD) | — |
 
-All VAEs introduce substantial E_match degradation. Tiny autoencoders show higher error than full
-KL-VAEs — E_match captures high-frequency texture loss that pixel metrics like SSIM miss.
-DC-AE (SANA) represents a completely different, non-SD architecture for comparison.
+All VAEs introduce substantial E_match degradation. Notably, the newer-generation tiny AEs (TAESD3,
+TAEF1) are ~14 pp better than their SD1/SDXL predecessors despite similar parameter counts —
+E_match exposes the reconstruction quality improvements that pixel metrics like SSIM miss.
 
 ```bash
 pip install diffusers accelerate

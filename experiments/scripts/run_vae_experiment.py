@@ -85,7 +85,7 @@ VAES: list[tuple[str, str, str, float]] = [
     ("DC-AE",      "mit-han-lab/dc-ae-f16c16-sana-1.1","AutoencoderDC",   8.0),
 ]
 
-_MODEL_CACHE: dict[str, object] = {}
+_MODEL_CACHE: dict[str, object | None] = {}
 
 
 def _load_vae(repo: str, cls_name: str, device: torch.device):
@@ -93,11 +93,15 @@ def _load_vae(repo: str, cls_name: str, device: torch.device):
     if key not in _MODEL_CACHE:
         import diffusers
 
-        cls = getattr(diffusers, cls_name)
-        model = cls.from_pretrained(repo)
-        model = model.to(device)
-        model.eval()
-        _MODEL_CACHE[key] = model
+        try:
+            cls = getattr(diffusers, cls_name)
+            model = cls.from_pretrained(repo)
+            model = model.to(device)
+            model.eval()
+            _MODEL_CACHE[key] = model
+        except (OSError, Exception) as exc:
+            print(f"  [skip] {repo}: {exc.__class__.__name__}: {exc}")
+            _MODEL_CACHE[key] = None
     return _MODEL_CACHE[key]
 
 
@@ -214,10 +218,18 @@ def main(argv: list[str] | None = None) -> int:
         vae_device = torch.device("cpu")
     print(f"VAE device: {vae_device}  |  matcher: {args.backend}")
 
-    # Pre-load all VAEs
-    for display_name, repo, cls_name, _ in VAES:
+    # Pre-load all VAEs; skip any that are gated or unavailable
+    available_vaes = []
+    for display_name, repo, cls_name, sev_idx in VAES:
         print(f"loading {display_name} ({repo}) ...")
-        _load_vae(repo, cls_name, vae_device)
+        model = _load_vae(repo, cls_name, vae_device)
+        if model is not None:
+            available_vaes.append((display_name, repo, cls_name, sev_idx))
+        else:
+            print(f"  → {display_name} skipped (not available without HF auth)")
+    if not available_vaes:
+        print("no VAEs could be loaded")
+        return 1
 
     rows: list[dict] = []
 
@@ -226,7 +238,7 @@ def main(argv: list[str] | None = None) -> int:
         matches_gt = matcher.match(left, keypoints, right_gt)
         m_gt = _membership_mask(keypoints, matches_gt, args.tau, 0.0, None)
 
-        for display_name, repo, cls_name, sev_idx in VAES:
+        for display_name, repo, cls_name, sev_idx in available_vaes:
             right_pred = vae_roundtrip(right_gt, repo, cls_name, vae_device)
             matches_pred = matcher.match(left, keypoints, right_pred)
             m_pred = _membership_mask(keypoints, matches_pred, args.tau, 0.0, None)
@@ -277,11 +289,11 @@ def main(argv: list[str] | None = None) -> int:
     _plot_vae_bar(per, out / "vae_comparison.png", n_pairs=len(pairs))
 
     meta = (
-        "| VAE | repo | size |\n"
+        "| VAE | repo | class |\n"
         "| --- | --- | --- |\n"
         + "\n".join(
-            f"| {n} | `{r}` | AutoencoderTiny/KL |"
-            for n, r, _, _ in VAES
+            f"| {n} | `{r}` | {c} |"
+            for n, r, c, _ in available_vaes
         )
         + "\n\n"
         f"- backend: `{args.backend}`  ·  pairs: {len(pairs)}"
