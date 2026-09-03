@@ -1,4 +1,4 @@
-# Matchability
+# Matchability (unofficial re-implementatioin)
 
 [![CI](https://github.com/nandometzger/Matchability/actions/workflows/ci.yml/badge.svg)](https://github.com/nandometzger/Matchability/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
